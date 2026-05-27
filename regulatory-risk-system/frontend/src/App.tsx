@@ -3,12 +3,19 @@ import { Layout, Menu, Typography } from 'antd';
 import {
   DashboardOutlined,
   SearchOutlined,
-  FileTextOutlined,
+  ExperimentOutlined,
+  ApiOutlined,
+  HistoryOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import CompanyDetail from './pages/CompanyDetail';
 import BatchScan from './pages/BatchScan';
+import EvalCenter from './pages/EvalCenter';
+import McpTools from './pages/McpTools';
+import History from './pages/History';
+import MlMetrics from './pages/MlMetrics';
 
 const { Header, Sider, Content } = Layout;
 
@@ -19,11 +26,22 @@ function AppLayout() {
   const menuItems = [
     { key: '/', icon: <DashboardOutlined />, label: '风险排行榜' },
     { key: '/scan', icon: <SearchOutlined />, label: '批量扫雷' },
+    { key: '/ml', icon: <ThunderboltOutlined />, label: '模型指标' },
+    { key: '/eval', icon: <ExperimentOutlined />, label: '评估中心' },
+    { key: '/mcp', icon: <ApiOutlined />, label: 'MCP 工具' },
+    { key: '/history', icon: <HistoryOutlined />, label: '扫雷历史' },
   ];
+
+  // Highlight the parent menu when on a /company/* detail page
+  const selected = location.pathname === '/'
+    ? '/'
+    : location.pathname.startsWith('/company')
+      ? '/'
+      : '/' + location.pathname.split('/')[1];
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider theme="dark" width={200}>
+      <Sider theme="dark" width={210}>
         <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Typography.Title level={4} style={{ color: '#fff', margin: 0, fontSize: 16 }}>
             扫雷预警系统
@@ -32,7 +50,7 @@ function AppLayout() {
         <Menu
           theme="dark"
           mode="inline"
-          selectedKeys={[location.pathname === '/' ? '/' : location.pathname.startsWith('/company') ? '/' : location.pathname]}
+          selectedKeys={[selected]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
         />
@@ -48,6 +66,10 @@ function AppLayout() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/company/:code" element={<CompanyDetail />} />
             <Route path="/scan" element={<BatchScan />} />
+            <Route path="/eval" element={<EvalCenter />} />
+            <Route path="/mcp" element={<McpTools />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/ml" element={<MlMetrics />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Content>

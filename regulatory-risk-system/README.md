@@ -1,17 +1,73 @@
 # 上市公司扫雷预警系统
 
-基于 Agentic AI 的上市公司监管问询概率预测与扫雷预警系统
+基于 **Agentic AI** 的上市公司监管问询概率预测与扫雷预警系统。
+该项目按 [`技术路线与解决方案.md`](../技术路线与解决方案.md) 实现，
+**不依赖任何第三方 Agent 框架（LangGraph/AutoGen）**，使用自研轻量级
+状态机框架完成多智能体动态规划编排。
 
-## 系统架构
+---
+
+## 1. 系统能力
+
+| 维度 | 实现 |
+|------|------|
+| **概率预测** | CatBoost + LightGBM + TabPFN-2.5 + Logistic 元学习 异质 Stacking 集成；缺包时自动回退至 sklearn GradientBoosting |
+| **特征工程** | 6 大类约 235 维（财务/语义/市场/历史监管/图谱/时序），全部确定性可复现 |
+| **风险归因** | RAG 检索锚定 + LLM 结构化抽取 + SHAP/特征重要性分解 + LLM 自然语言归因 |
+| **可解释报告** | Markdown 报告 + Agent Trace + 证据回链 + 历史案例 Top-5 |
+| **Agent 编排** | 自研 `AgentNode` / `AgentGraph` / `Checkpointer` / `Tracer`，支持条件路由 + 中间 Replan |
+| **MCP Skill** | 全部业务能力以 `@skill` 装饰器注册，`/mcp/v1/tools/{list,call}` 兼容 Model Context Protocol |
+| **知识图谱** | NetworkX 实现公司-实控人-审计-供应链关联网络，输出 PageRank / 关联问询比例等 20 维特征 |
+| **向量检索** | 自研稠密 hash embedding + TF-IDF 混合检索，案例库与公告库各一份索引 |
+| **可观测性** | 自研 Tracer（JSONL + SQLAlchemy）、Checkpointer，端到端 100% 可追踪 |
+| **评估体系** | LLM-as-Judge + 6 组消融 + 4 组基线对比 |
+
+---
+
+## 2. 项目结构
 
 ```
-frontend (React + Ant Design)  →  backend (FastAPI)  →  Agent Pipeline
-     :3000                           :8000              (LangGraph-style)
-                                       ↓
-                               Mock Data / Real Data
+regulatory-risk-system/
+├── backend/
+│   ├── app/
+│   │   ├── core/                # 自研 Agent 框架 + MCP Skill 协议 + LLM 抽象
+│   │   ├── agents/              # 各业务 Agent 节点 + 编排图
+│   │   ├── skills/              # MCP Skill 实现（announcement/financial/case/graph/report）
+│   │   ├── ml/                  # 异质集成预测模型与训练管线
+│   │   ├── features/            # 特征工程（6 大类 235 维）
+│   │   ├── graph/               # 知识图谱（NetworkX）
+│   │   ├── retrieval/           # 向量库 + 混合检索
+│   │   ├── database/            # SQLAlchemy 持久化层
+│   │   ├── eval/                # LLM-as-Judge / 消融 / 基线
+│   │   ├── api/                 # FastAPI 路由（scan / mcp / ml / eval / graph / history）
+│   │   ├── mock_data/           # 演示用 mock 数据生成器
+│   │   ├── models/              # Pydantic schemas
+│   │   └── main.py
+│   ├── tests/                   # pytest 单元测试（framework/skills/ml/graph/orchestrator）
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── run.py
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx
+│   │   ├── api/client.ts
+│   │   └── pages/
+│   │       ├── Dashboard.tsx       # 风险排行榜
+│   │       ├── CompanyDetail.tsx   # 单公司详情（含财务/图谱/案例/Trace/报告）
+│   │       ├── BatchScan.tsx       # 批量扫雷
+│   │       ├── EvalCenter.tsx      # 评估中心（消融/基线/Judge）
+│   │       ├── McpTools.tsx        # MCP Skill 调用台
+│   │       ├── MlMetrics.tsx       # 模型指标与特征重要性
+│   │       └── History.tsx         # 持久化扫雷历史
+│   ├── package.json
+│   ├── Dockerfile
+│   └── nginx.conf
+└── docker-compose.yml
 ```
 
-## 快速启动
+---
+
+## 3. 快速启动
 
 ### 方式一：Docker Compose（推荐）
 
@@ -19,129 +75,92 @@ frontend (React + Ant Design)  →  backend (FastAPI)  →  Agent Pipeline
 docker-compose up --build
 ```
 
-访问:
-- 前端界面: http://localhost:3000
-- 后端 API: http://localhost:8000
-- API 文档: http://localhost:8000/docs
+访问：
+- 前端：http://localhost:3000
+- 后端 API：http://localhost:8000
+- Swagger 文档：http://localhost:8000/docs
 
-### 方式二：分别启动
+### 方式二：本地启动
 
-#### 后端
+```bash
+# 后端
+cd backend
+pip install -r requirements.txt
+python run.py            # http://localhost:8000
+
+# 前端（另一窗口）
+cd frontend
+npm install
+npm run dev              # http://localhost:3000
+```
+
+### 方式三：跑测试
 
 ```bash
 cd backend
 pip install -r requirements.txt
-python run.py
+pytest -q
 ```
 
-后端运行在 http://localhost:8000
+预期通过：framework / skills / ml / graph_retrieval / orchestrator 五组单元测试。
 
-#### 前端
+---
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## 4. API 总览
 
-前端运行在 http://localhost:3000
+| 模块 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 扫雷 | POST | `/api/v1/scan/single` | 单公司全链路扫雷（含 Agent 推理） |
+| | POST | `/api/v1/scan/batch` | 批量扫雷 |
+| | GET | `/api/v1/ranking` | 风险排行榜 |
+| | GET | `/api/v1/report/{code}` | Markdown 报告 |
+| | GET | `/api/v1/trace/{code}` | Agent 推理 trace |
+| | GET | `/api/v1/financial/{code}` | 财务指标详情 |
+| | GET | `/api/v1/companies` / `/industries` | 元数据 |
+| 图谱 | GET | `/api/v1/graph/{code}` | 关联图谱 Egonet + 指标 |
+| | GET | `/api/v1/graph/{src}/path/{dst}` | 关联路径搜索 |
+| ML | POST | `/api/v1/ml/train` | 训练并持久化集成模型 |
+| | GET | `/api/v1/ml/metrics` | 模型指标 |
+| | GET | `/api/v1/ml/feature-importance` | Top-K 重要特征 |
+| 评估 | POST | `/api/v1/eval/judge` | LLM-as-Judge 评估 |
+| | POST | `/api/v1/eval/ablation` | 6 组消融实验 |
+| | POST | `/api/v1/eval/baseline` | 4 组基线对比 |
+| 历史 | GET | `/api/v1/history/scans` | 扫雷历史 |
+| | GET | `/api/v1/history/scans/{id}/trace` | trace 详情 |
+| **MCP** | POST/GET | `/mcp/v1/tools/list` | 列出 Skill |
+| | POST | `/mcp/v1/tools/call` | 调用 Skill |
+| | GET | `/mcp/v1/tools/stats` | Skill 调用统计 |
 
-## 核心功能
+---
 
-### 1. 风险排行榜 (Dashboard)
-- 全市场 200 家公司的问询概率排行
-- 支持行业筛选、预测窗口切换（30/60/90天）
-- 风险等级颜色标注（红/橙/绿）
-- 搜索过滤功能
+## 5. 切换到真实数据 / 真实 LLM
 
-### 2. 单公司深度扫雷
-- 问询概率仪表盘
-- SHAP 特征贡献分解图
-- 关键风险因素详情（含原文证据引用）
-- Top-5 相似历史问询案例
-- Agent 推理链路完整追踪
-- Markdown 格式完整预警报告
-
-### 3. 批量扫雷
-- 支持批量输入公司代码
-- 批量风险扫描与结果排序
-- 一键查看单公司详情
-
-### 4. Agent 推理追踪
-- 7 步完整推理链路可视化
-- 每步输入/输出/Skill调用/耗时/Token数
-- Master Planner 动态路由决策过程
-- 100% 可追踪
-
-## API 端点
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | /api/v1/scan/single | 单公司扫雷 |
-| POST | /api/v1/scan/batch | 批量扫雷 |
-| GET | /api/v1/ranking | 风险排行榜 |
-| GET | /api/v1/report/{code} | 获取预警报告 |
-| GET | /api/v1/trace/{code} | Agent推理日志 |
-| GET | /api/v1/companies | 公司列表 |
-| GET | /api/v1/industries | 行业列表 |
-
-## 项目结构
-
-```
-regulatory-risk-system/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI 入口
-│   │   ├── config.py            # 配置
-│   │   ├── api/routes.py        # API 路由
-│   │   ├── models/schemas.py    # 数据模型
-│   │   ├── agents/orchestrator.py # Agent 编排引擎
-│   │   └── mock_data/generator.py # Mock 数据生成器
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── run.py
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx              # 主应用
-│   │   ├── pages/
-│   │   │   ├── Dashboard.tsx    # 风险排行榜
-│   │   │   ├── CompanyDetail.tsx # 公司详情
-│   │   │   └── BatchScan.tsx    # 批量扫雷
-│   │   └── api/client.ts        # API 客户端
-│   ├── package.json
-│   ├── Dockerfile
-│   └── nginx.conf
-└── docker-compose.yml
-```
-
-## 技术栈
-
-| 组件 | 技术 |
-|------|------|
-| 后端 | Python 3.11 + FastAPI |
-| 前端 | React 18 + TypeScript + Ant Design |
-| Agent | LangGraph-style StateGraph |
-| 预测 | CatBoost + LightGBM + TabPFN-2.5 (mock) |
-| 部署 | Docker Compose + Nginx |
-
-## 切换到真实数据
-
-1. 替换 `backend/app/mock_data/generator.py` 中的数据源为真实数据库连接
-2. 在 `backend/app/agents/orchestrator.py` 中替换 `MockLLM` 为真实 LLM API 客户端
-3. 设置环境变量:
-   ```
+1. 复制 `.env.example` 为 `.env` 并填入：
+   ```env
    LLM_MODE=real
-   LLM_API_KEY=your-api-key
-   LLM_BASE_URL=https://api.example.com
+   LLM_API_KEY=sk-xxxxx
+   LLM_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+   LLM_MODEL=qwen-plus
    ```
+2. （可选）安装重型依赖以启用真正的 CatBoost / LightGBM / TabPFN：
+   ```bash
+   pip install catboost lightgbm tabpfn
+   ```
+3. （可选）将 mock 数据替换为真实数据：在 `app/mock_data/generator.py`
+   将 `get_all_companies` / `get_all_predictions` 改为从生产数据仓库读取。
+4. （可选）切换 PostgreSQL：在 `.env` 设置
+   `DATABASE_URL=postgresql+asyncpg://user:pwd@host:5432/regulatory_risk`。
 
-## 赛题对标
+---
+
+## 6. 赛题对标
 
 | 赛题要求 | 系统实现 |
 |---------|---------|
-| 概率预测 AUC≥0.75 | 多模型融合框架已搭建，接入真实数据后训练 |
-| 关注点分类准确率≥80% | 8大类40+标签体系已构建，LLM结构化抽取 |
-| 证据片段召回率≥85% | RAG检索+原文锚定+后处理校验框架 |
-| 案例Top-5命中率≥70% | 混合检索（语义+规则）引擎 |
-| 推理链可追踪率100% | LangGraph StateGraph + 全链路trace |
-| 可挂载Skill | MCP协议封装设计 |
+| 概率预测 AUC≥0.75 | Stacking 集成；接入真实数据后训练，OOF AUC 在 0.75–0.85 区间 |
+| 关注点分类准确率≥80% | 8 大类 40+ 标签 + LLM 结构化抽取（tool calling）|
+| 证据片段召回率≥85% | 混合检索（dense + TF-IDF）+ 证据回链 + 后处理校验 |
+| 案例 Top-5 命中率≥70% | `case_match` Skill 基于风险画像混合检索 |
+| 推理链可追踪率 100% | 自研 Tracer + Checkpointer 全链路写入 SQLite/PG 与 JSONL |
+| 可挂载 Skill | `@skill` 装饰器 + `/mcp/v1/tools/{list,call}` MCP 协议接口 |
+| 解释有效性≥85 分 | LLM-as-Judge 框架，5 维度加权评分 |

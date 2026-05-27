@@ -8,10 +8,19 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - LLM_MODE=mock
+      - LLM_MODE=${LLM_MODE:-mock}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - LLM_MODEL=${LLM_MODEL:-qwen-plus}
+      - DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:///data/regulatory_risk.db}
     volumes:
       - ./backend/data:/app/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://localhost:8000/healthz',timeout=3).read(); sys.exit(0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   frontend:
     build:

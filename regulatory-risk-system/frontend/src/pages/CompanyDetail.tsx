@@ -1,16 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+// useMemo is used in GraphPanel for circular layout caching
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  Card, Row, Col, Tag, Descriptions, Table, Timeline, Progress, Spin, Button,
+  Card, Row, Col, Tag, Table, Timeline, Progress, Spin, Button,
   Tabs, Statistic, Alert, Typography, Collapse, Space, Tooltip,
+  Descriptions, Empty,
 } from 'antd';
 import {
   ArrowLeftOutlined, WarningOutlined, CheckCircleOutlined,
   ClockCircleOutlined, ThunderboltOutlined, FileTextOutlined,
   NodeIndexOutlined, ApartmentOutlined, FundOutlined,
+  PieChartOutlined, DotChartOutlined,
 } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
-import { scanSingle } from '../api/client';
+import { scanSingle, getFinancial, getGraph } from '../api/client';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -29,13 +32,21 @@ export default function CompanyDetail() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
-  const [windowDays, setWindowDays] = useState(60);
+  const [windowDays] = useState(60);
+  const [financial, setFinancial] = useState<any>(null);
+  const [graph, setGraph] = useState<any>(null);
 
   useEffect(() => {
     if (!code) return;
     setLoading(true);
-    scanSingle(code, windowDays).then((d) => {
+    Promise.all([
+      scanSingle(code, windowDays),
+      getFinancial(code, windowDays).catch(() => null),
+      getGraph(code, 1, 25).catch(() => null),
+    ]).then(([d, fin, g]) => {
       setData(d);
+      setFinancial(fin);
+      setGraph(g);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [code, windowDays]);
@@ -110,6 +121,16 @@ export default function CompanyDetail() {
             children: <RiskFactorsPanel factors={data.risk_factors} />,
           },
           {
+            key: 'financial',
+            label: <><PieChartOutlined /> 财务指标</>,
+            children: <FinancialPanel financial={financial?.financial} />,
+          },
+          {
+            key: 'graph',
+            label: <><DotChartOutlined /> 关联图谱</>,
+            children: <GraphPanel graph={graph} />,
+          },
+          {
             key: 'cases',
             label: <><FileTextOutlined /> 相似案例</>,
             children: <SimilarCasesPanel cases={data.similar_cases} />,
@@ -137,6 +158,7 @@ export default function CompanyDetail() {
 }
 
 function RiskFactorsPanel({ factors }: { factors: any[] }) {
+  if (!factors?.length) return <Empty description="无风险因素" />;
   return (
     <Collapse
       defaultActiveKey={factors.map((_: any, i: number) => String(i))}
@@ -167,6 +189,197 @@ function RiskFactorsPanel({ factors }: { factors: any[] }) {
   );
 }
 
+function FinancialPanel({ financial }: { financial: any }) {
+  if (!financial) return <Empty description="财务数据不可用" />;
+  const groups = [
+    {
+      title: '盈利能力',
+      items: [
+        { label: 'ROE', value: `${financial.roe}%`, warn: financial.roe < 5 },
+        { label: 'ROA', value: `${financial.roa}%`, warn: financial.roa < 3 },
+        { label: '毛利率', value: `${financial.gross_margin}%`, warn: financial.gross_margin < 10 },
+        { label: '净利率', value: `${financial.net_margin}%`, warn: financial.net_margin < 0 },
+      ],
+    },
+    {
+      title: '偿债能力',
+      items: [
+        { label: '资产负债率', value: `${financial.debt_ratio}%`, warn: financial.debt_ratio > 65 },
+        { label: '流动比率', value: financial.current_ratio, warn: financial.current_ratio < 1 },
+      ],
+    },
+    {
+      title: '营运能力',
+      items: [
+        { label: '应收周转率', value: financial.receivable_turnover, warn: financial.receivable_turnover < 3 },
+        { label: '存货周转率', value: financial.inventory_turnover, warn: financial.inventory_turnover < 3 },
+      ],
+    },
+    {
+      title: '现金流与增长',
+      items: [
+        { label: '经营现金流/净利润', value: financial.ocf_to_profit, warn: financial.ocf_to_profit < 0.3 },
+        { label: '营收增速', value: `${financial.revenue_growth}%`, warn: false },
+        { label: '净利润增速', value: `${financial.profit_growth}%`, warn: financial.profit_growth < -30 },
+        { label: '应收增速', value: `${financial.receivable_growth}%`, warn: financial.receivable_growth > 60 },
+      ],
+    },
+    {
+      title: '异常检测指标',
+      items: [
+        { label: 'Beneish M-Score', value: financial.beneish_m_score, warn: financial.beneish_m_score > -1.78 },
+        { label: 'Altman Z-Score', value: financial.altman_z_score, warn: financial.altman_z_score < 1.8 },
+        { label: '大股东质押比例', value: `${financial.pledge_ratio}%`, warn: financial.pledge_ratio > 50 },
+        { label: '高管变动次数', value: financial.exec_turnover_count, warn: financial.exec_turnover_count > 2 },
+      ],
+    },
+  ];
+
+  return (
+    <Row gutter={[16, 16]}>
+      {groups.map((g, i) => (
+        <Col key={i} span={12}>
+          <Card title={g.title} size="small">
+            <Descriptions size="small" column={1} bordered>
+              {g.items.map((it) => (
+                <Descriptions.Item key={it.label} label={it.label}>
+                  <Text strong style={{ color: it.warn ? '#f5222d' : '#1f1f1f' }}>
+                    {it.value}
+                  </Text>
+                  {it.warn && <Tag color="red" style={{ marginLeft: 8 }}>异常</Tag>}
+                </Descriptions.Item>
+              ))}
+            </Descriptions>
+          </Card>
+        </Col>
+      ))}
+    </Row>
+  );
+}
+
+function GraphPanel({ graph }: { graph: any }) {
+  if (!graph?.egonet?.nodes?.length) return <Empty description="无关联图谱数据" />;
+
+  const { nodes, links } = graph.egonet;
+  const metrics = graph.metrics || {};
+
+  // Lay out nodes on a circle around the target
+  const W = 700;
+  const H = 460;
+  const center = { x: W / 2, y: H / 2 };
+  const target = nodes.find((n: any) => n.is_target);
+  const others = nodes.filter((n: any) => !n.is_target);
+  const layouted = useMemo(() => {
+    const pos: Record<string, { x: number; y: number }> = {};
+    if (target) pos[target.id] = { x: center.x, y: center.y };
+    const radius = 180;
+    others.forEach((n: any, i: number) => {
+      const angle = (i / Math.max(1, others.length)) * 2 * Math.PI;
+      pos[n.id] = {
+        x: center.x + radius * Math.cos(angle),
+        y: center.y + radius * Math.sin(angle),
+      };
+    });
+    return pos;
+  }, [graph]);
+
+  const colorByType: Record<string, string> = {
+    company: '#1677ff',
+    controller: '#722ed1',
+    auditor: '#13c2c2',
+  };
+  const relColor: Record<string, string> = {
+    same_controller: '#722ed1',
+    related_transaction: '#fa8c16',
+    supplier: '#52c41a',
+    customer: '#52c41a',
+    same_auditor: '#13c2c2',
+    subsidiary: '#1677ff',
+  };
+
+  return (
+    <Row gutter={16}>
+      <Col span={16}>
+        <Card title="一度关联网络（Egonet）">
+          <svg width={W} height={H} style={{ background: '#fafafa', borderRadius: 4 }}>
+            {links.map((l: any, i: number) => {
+              const s = layouted[l.source];
+              const t = layouted[l.target];
+              if (!s || !t) return null;
+              return (
+                <line
+                  key={i} x1={s.x} y1={s.y} x2={t.x} y2={t.y}
+                  stroke={relColor[l.relation] || '#bbb'}
+                  strokeOpacity={0.55}
+                  strokeWidth={1 + (l.weight || 0.3) * 1.5}
+                />
+              );
+            })}
+            {nodes.map((n: any) => {
+              const p = layouted[n.id];
+              if (!p) return null;
+              const isInq = n.is_inquired;
+              const isTarget = n.is_target;
+              const r = isTarget ? 22 : (n.category === 'company' ? 14 : 10);
+              return (
+                <g key={n.id} transform={`translate(${p.x},${p.y})`}>
+                  <circle
+                    r={r}
+                    fill={isInq ? '#f5222d' : colorByType[n.category] || '#999'}
+                    stroke={isTarget ? '#000' : '#fff'}
+                    strokeWidth={isTarget ? 3 : 1.5}
+                  />
+                  <text textAnchor="middle" dy={-r - 4} fontSize={11} fill="#333">
+                    {n.name?.slice(0, 8)}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+          <div style={{ marginTop: 12 }}>
+            <Space size="middle">
+              <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#1677ff', borderRadius: 6, marginRight: 4 }}/>公司</span>
+              <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#722ed1', borderRadius: 6, marginRight: 4 }}/>实控人</span>
+              <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#13c2c2', borderRadius: 6, marginRight: 4 }}/>审计机构</span>
+              <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#f5222d', borderRadius: 6, marginRight: 4 }}/>已被问询</span>
+            </Space>
+          </div>
+        </Card>
+      </Col>
+      <Col span={8}>
+        <Card title="图谱风险指标" size="small">
+          <Descriptions column={1} size="small" bordered>
+            <Descriptions.Item label="PageRank">
+              {(metrics.pagerank ?? 0).toFixed(4)}
+            </Descriptions.Item>
+            <Descriptions.Item label="度中心性">
+              {(metrics.degree_centrality ?? 0).toFixed(4)}
+            </Descriptions.Item>
+            <Descriptions.Item label="一度被问询邻居">
+              <Tag color="red">{metrics.related_inquired_count_1deg ?? 0}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="二度被问询邻居">
+              <Tag color="orange">{metrics.related_inquired_count_2deg ?? 0}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="同实控人被问询比">
+              {((metrics.same_controller_inquired_ratio ?? 0) * 100).toFixed(1)}%
+            </Descriptions.Item>
+            <Descriptions.Item label="供应商平均风险">
+              {(metrics.supplier_avg_risk ?? 0).toFixed(3)}
+            </Descriptions.Item>
+            <Descriptions.Item label="客户平均风险">
+              {(metrics.customer_avg_risk ?? 0).toFixed(3)}
+            </Descriptions.Item>
+            <Descriptions.Item label="同审计机构被问询比">
+              {((metrics.same_auditor_inquired_ratio ?? 0) * 100).toFixed(1)}%
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
+      </Col>
+    </Row>
+  );
+}
+
 function SimilarCasesPanel({ cases }: { cases: any[] }) {
   const columns = [
     { title: '排名', key: 'rank', width: 60, render: (_: any, __: any, i: number) => i + 1 },
@@ -191,12 +404,18 @@ function SimilarCasesPanel({ cases }: { cases: any[] }) {
 
 function AgentTracePanel({ trace, stats }: { trace: any[]; stats: { time: number; calls: number; tokens: number } }) {
   const agentIcons: Record<string, any> = {
+    'planner': <ApartmentOutlined style={{ color: '#1677ff' }} />,
     'Master Planner': <ApartmentOutlined style={{ color: '#1677ff' }} />,
+    'financial_agent': <FundOutlined style={{ color: '#fa8c16' }} />,
     '财务异常检测Agent': <FundOutlined style={{ color: '#fa8c16' }} />,
+    'announcement_agent': <FileTextOutlined style={{ color: '#52c41a' }} />,
     '公告研读Agent': <FileTextOutlined style={{ color: '#52c41a' }} />,
+    'graph_agent': <DotChartOutlined style={{ color: '#722ed1' }} />,
+    'predictor': <ThunderboltOutlined style={{ color: '#f5222d' }} />,
     '概率预测模型': <ThunderboltOutlined style={{ color: '#f5222d' }} />,
-    '案例检索Agent': <FileTextOutlined style={{ color: '#722ed1' }} />,
-    '归因解释Agent': <CheckCircleOutlined style={{ color: '#13c2c2' }} />,
+    'case_agent': <FileTextOutlined style={{ color: '#722ed1' }} />,
+    'replan': <ApartmentOutlined style={{ color: '#1677ff' }} />,
+    'attribution_agent': <CheckCircleOutlined style={{ color: '#13c2c2' }} />,
   };
 
   return (
@@ -221,7 +440,7 @@ function AgentTracePanel({ trace, stats }: { trace: any[]; stats: { time: number
 
       <Timeline
         items={trace.map((step: any) => ({
-          color: step.agent_name === 'Master Planner' ? 'blue' : step.tokens_used > 0 ? 'green' : 'gray',
+          color: step.agent_name.toLowerCase().includes('planner') ? 'blue' : step.tokens_used > 0 ? 'green' : 'gray',
           dot: agentIcons[step.agent_name] || <ClockCircleOutlined />,
           children: (
             <Card size="small" style={{ marginBottom: 0 }}>
@@ -238,7 +457,7 @@ function AgentTracePanel({ trace, stats }: { trace: any[]; stats: { time: number
               <div style={{ fontSize: 13, color: '#666' }}>
                 <div><Text type="secondary">输入: </Text>{step.input_summary}</div>
                 <div><Text type="secondary">输出: </Text>{step.output_summary}</div>
-                {step.skills_called.length > 0 && (
+                {step.skills_called?.length > 0 && (
                   <div style={{ marginTop: 4 }}>
                     {step.skills_called.map((s: string) => <Tag key={s} color="purple" style={{ fontSize: 11 }}>{s}</Tag>)}
                   </div>
