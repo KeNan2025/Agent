@@ -56,7 +56,7 @@ export default function EvalCenter() {
                   <Space><ExperimentOutlined style={{ color: '#722ed1' }} /><span style={{ fontWeight: 600 }}>6 组消融实验</span></Space>
                 }
                 extra={
-                  <Button type="primary" onClick={runAblation} loading={ablLoading}
+                  <Button type="primary" className="btn-purple" onClick={runAblation} loading={ablLoading}
                           icon={<ThunderboltOutlined />} style={{ fontWeight: 500 }}>
                     运行实验
                   </Button>
@@ -165,7 +165,7 @@ export default function EvalCenter() {
                   <Space><TrophyOutlined style={{ color: '#f59e0b' }} /><span style={{ fontWeight: 600 }}>4 组基线对比</span></Space>
                 }
                 extra={
-                  <Button type="primary" onClick={runBaseline} loading={blLoading}
+                  <Button type="primary" className="btn-purple" onClick={runBaseline} loading={blLoading}
                           icon={<ThunderboltOutlined />} style={{ fontWeight: 500 }}>
                     运行对比
                   </Button>
@@ -268,7 +268,7 @@ export default function EvalCenter() {
                     placeholder="公司代码"
                     prefix={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>代码</span>}
                   />
-                  <Button type="primary" onClick={runJudge} loading={judgeLoading} icon={<ThunderboltOutlined />}>
+                  <Button type="primary" className="btn-ghost-primary" onClick={runJudge} loading={judgeLoading} icon={<ThunderboltOutlined />}>
                     评估
                   </Button>
                 </div>

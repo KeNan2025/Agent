@@ -56,6 +56,7 @@ export default function SkillFiles() {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewRecord, setViewRecord] = useState<SkillFile | null>(null);
   const [viewContent, setViewContent] = useState('');
+  const [viewFilename, setViewFilename] = useState('');
 
   // ── Edit state ──
   const [editOpen, setEditOpen] = useState(false);
@@ -69,7 +70,9 @@ export default function SkillFiles() {
   const fetchFiles = async () => {
     try {
       const data = await listSkillFiles();
-      setFiles(Array.isArray(data) ? data : data.files ?? []);
+      const raw = Array.isArray(data) ? data : data.files ?? [];
+      // Map API fields (size_bytes) to interface fields (size)
+      setFiles(raw.map((f: any) => ({ ...f, size: f.size_bytes ?? f.size ?? 0 })));
     } catch (e: any) {
       message.error('获取文件列表失败: ' + (e?.message ?? e));
     }
@@ -114,10 +117,11 @@ export default function SkillFiles() {
   }));
 
   // ── Helpers ──
-  const formatSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  const formatSize = (bytes: number | undefined | null): string => {
+    const b = bytes || 0;
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+    return (b / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   const formatDate = (dateStr: string): string => {
@@ -134,6 +138,7 @@ export default function SkillFiles() {
     try {
       const data = await getSkillFile(record.id);
       setViewRecord(record);
+      setViewFilename(record.filename);
       setViewContent(data.content ?? '（无内容）');
       setViewOpen(true);
     } catch (e: any) {
@@ -309,11 +314,11 @@ export default function SkillFiles() {
                     onClick={() => handleEditOpen(r)}>编辑</Button>
           </Tooltip>
           <Tooltip title="下载">
-            <Button type="primary" size="small" icon={<DownloadOutlined />}
+            <Button type="primary" className="btn-ghost-primary" size="small" icon={<DownloadOutlined />}
                     onClick={() => handleDownload(r)} ghost>下载</Button>
           </Tooltip>
           <Tooltip title="删除">
-            <Button type="default" size="small" danger icon={<DeleteOutlined />}
+            <Button type="default" className="btn-danger" size="small" danger icon={<DeleteOutlined />}
                     onClick={() => handleDelete(r)} />
           </Tooltip>
         </Space>
@@ -345,6 +350,7 @@ export default function SkillFiles() {
           extra={
             <Button
               size="small"
+              className="btn-purple"
               icon={<CodeOutlined />}
               loading={skillsRefreshing}
               onClick={handleRefreshSkills}
@@ -466,7 +472,7 @@ export default function SkillFiles() {
 
         {/* Action bar */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <Button type="primary" icon={<PlusOutlined />}
+          <Button type="primary" className="btn-success" icon={<PlusOutlined />}
                   onClick={() => setUploadOpen(true)}>
             上传文件
           </Button>
@@ -524,7 +530,7 @@ export default function SkillFiles() {
               }} disabled={uploading}>
                 取消
               </Button>
-              <Button type="primary" loading={uploading} onClick={handleUpload}
+              <Button type="primary" className="btn-success" loading={uploading} onClick={handleUpload}
                       icon={<UploadOutlined />}>
                 上传
               </Button>
@@ -684,7 +690,7 @@ export default function SkillFiles() {
           footer={
             <Space>
               <Button onClick={() => setEditOpen(false)} disabled={saving}>取消</Button>
-              <Button type="primary" loading={saving} onClick={handleEditSave}
+              <Button type="primary" className="btn-success" loading={saving} onClick={handleEditSave}
                       icon={<EditOutlined />}>
                 保存
               </Button>

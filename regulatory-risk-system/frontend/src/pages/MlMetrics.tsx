@@ -100,7 +100,7 @@ export default function MlMetrics() {
                 <Space><FundOutlined style={{ color: '#1a5cff' }} /><span style={{ fontWeight: 600 }}>Base Model 性能 (OOF AUC)</span></Space>
               }
               extra={
-                <Button onClick={retrain} loading={training} icon={<ReloadOutlined />}>
+                <Button onClick={retrain} className="btn-warning" loading={training} icon={<ReloadOutlined />}>
                   重新训练
                 </Button>
               }

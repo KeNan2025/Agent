@@ -237,6 +237,7 @@ export default function CompanyDetail() {
                 extra={
                   <Button
                     type="primary"
+                    className="btn-success"
                     icon={<DownloadOutlined />}
                     href={getReportDownloadUrl(code!, windowDays)}
                     target="_blank"

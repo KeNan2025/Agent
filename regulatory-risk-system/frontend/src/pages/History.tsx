@@ -87,7 +87,7 @@ export default function History() {
     {
       title: '操作', key: 'op', width: 110,
       render: (_: any, r: any) => (
-        <Button type="link" size="small" icon={<FileTextOutlined />}
+        <Button type="default" className="btn-purple" size="small" icon={<FileTextOutlined />}
                 onClick={() => handleViewTrace(r.scan_id)}>
           查看 Trace
         </Button>
@@ -166,6 +166,7 @@ export default function History() {
                   <Space>
                     <Button
                       size="small"
+                      className="btn-ghost-primary"
                       icon={<DownloadOutlined />}
                       onClick={() => {
                         if (trace?.scan_id) {
