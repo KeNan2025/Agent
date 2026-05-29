@@ -69,7 +69,7 @@ export default function MlMetrics() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>AUC-ROC</span>}
                 value={metrics?.metrics?.auc_roc?.toFixed(3) ?? '-'}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#4f8ff7' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#1a5cff' }}
               />
             </Card>
           </Col>
@@ -97,7 +97,7 @@ export default function MlMetrics() {
           <Col xs={24} lg={12}>
             <Card
               title={
-                <Space><FundOutlined style={{ color: '#4f8ff7' }} /><span style={{ fontWeight: 600 }}>Base Model 性能 (OOF AUC)</span></Space>
+                <Space><FundOutlined style={{ color: '#1a5cff' }} /><span style={{ fontWeight: 600 }}>Base Model 性能 (OOF AUC)</span></Space>
               }
               extra={
                 <Button onClick={retrain} loading={training} icon={<ReloadOutlined />}>
@@ -150,7 +150,7 @@ export default function MlMetrics() {
                           <div style={{ flex: 1, height: 10, borderRadius: 5, background: 'rgba(59,130,246,0.1)', overflow: 'hidden' }}>
                             <div style={{
                               height: '100%', width: `${pct}%`, borderRadius: 3,
-                              background: 'linear-gradient(90deg, #2563eb, #4f8ff7)',
+                              background: 'linear-gradient(90deg, #1a5cff, #1a5cff)',
                               transition: 'width 0.6s ease',
                             }} />
                           </div>

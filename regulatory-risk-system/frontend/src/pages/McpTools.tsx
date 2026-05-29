@@ -169,7 +169,7 @@ export default function McpTools() {
               <Card
                 title={
                   <Space>
-                    <PlayCircleOutlined style={{ color: '#4f8ff7' }} />
+                    <PlayCircleOutlined style={{ color: '#1a5cff' }} />
                     <span>调用</span>
                     <Tag color="purple" style={{ borderRadius: 4 }}>{selected.name}</Tag>
                   </Space>
