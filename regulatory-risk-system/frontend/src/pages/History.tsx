@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  Card, Table, Tag, Button, Row, Col, Statistic, Spin, Typography, Space, Badge,
+  Card, Table, Tag, Button, Row, Col, Statistic, Spin, Space, Badge,
 } from 'antd';
 import {
   HistoryOutlined, FileTextOutlined, ClockCircleOutlined,
@@ -9,10 +9,8 @@ import {
 import { listScans, getScanTrace } from '../api/client';
 import { useNavigate } from 'react-router-dom';
 
-const { Text } = Typography;
-
 const riskColorMap: Record<string, string> = {
-  '高风险': '#f5222d', '中风险': '#fa8c16', '低风险': '#52c41a',
+  '高风险': '#ef4444', '中风险': '#f59e0b', '低风险': '#10b981',
 };
 
 export default function History() {
@@ -40,18 +38,18 @@ export default function History() {
     {
       title: 'Scan ID', dataIndex: 'scan_id', width: 200,
       render: (v: string) => (
-        <Text copyable style={{ fontSize: 12, fontFamily: "'SF Mono', Consolas, monospace" }}>
+        <span className="text-mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>
           {v.slice(0, 12)}...
-        </Text>
+        </span>
       ),
     },
     {
       title: '公司代码', dataIndex: 'company_code', width: 110,
       render: (v: string) => (
-        <Text strong style={{ color: '#1677ff', cursor: 'pointer' }}
+        <span style={{ fontWeight: 600, color: '#3b82f6', cursor: 'pointer' }}
               onClick={() => navigate(`/company/${v}`)}>
           {v}
-        </Text>
+        </span>
       ),
     },
     {
@@ -62,9 +60,9 @@ export default function History() {
       title: '问询概率', dataIndex: 'probability', width: 120,
       render: (v: number) => {
         const pct = Math.round(v * 100);
-        const color = v >= 0.6 ? '#f5222d' : v >= 0.3 ? '#fa8c16' : '#52c41a';
+        const color = v >= 0.6 ? '#ef4444' : v >= 0.3 ? '#f59e0b' : '#10b981';
         return (
-          <Text strong style={{ color, fontVariantNumeric: 'tabular-nums' }}>{pct}%</Text>
+          <span style={{ fontWeight: 600, color, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
         );
       },
     },
@@ -73,16 +71,16 @@ export default function History() {
       render: (v: string) => (
         <Badge
           color={riskColorMap[v]}
-          text={<Text style={{ color: riskColorMap[v], fontWeight: 600, fontSize: 13 }}>{v}</Text>}
+          text={<span style={{ color: riskColorMap[v], fontWeight: 600, fontSize: 13 }}>{v}</span>}
         />
       ),
     },
     {
       title: '时间', dataIndex: 'created_at', width: 170,
       render: (v: string) => (
-        <Text type="secondary" style={{ fontSize: 12 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
           {v ? v.replace('T', ' ').slice(0, 19) : '-'}
-        </Text>
+        </span>
       ),
     },
     {
@@ -103,7 +101,7 @@ export default function History() {
 
   return (
     <Spin spinning={loading}>
-      <div className="fade-in">
+      <div className="page-container fade-in">
         <div className="page-title">
           <span className="title-bar" />
           扫雷历史
@@ -114,9 +112,9 @@ export default function History() {
             <Card className="stat-card stat-blue" bodyStyle={{ padding: '20px 24px' }}>
               <HistoryOutlined className="stat-icon" />
               <Statistic
-                title={<Text type="secondary" style={{ fontSize: 13 }}>历史扫雷次数</Text>}
+                title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>历史扫雷次数</span>}
                 value={scans.length}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#1677ff' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#3b82f6' }}
               />
             </Card>
           </Col>
@@ -124,20 +122,20 @@ export default function History() {
             <Card className="stat-card stat-red" bodyStyle={{ padding: '20px 24px' }}>
               <WarningOutlined className="stat-icon" />
               <Statistic
-                title={<Text type="secondary" style={{ fontSize: 13 }}>高风险占比</Text>}
+                title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>高风险占比</span>}
                 value={scans.length ? (highCount / scans.length * 100).toFixed(1) : 0}
                 suffix="%"
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#f5222d' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#ef4444' }}
               />
             </Card>
           </Col>
           <Col xs={24} sm={8}>
-            <Card className="stat-card stat-orange" bodyStyle={{ padding: '20px 24px' }}>
+            <Card className="stat-card stat-green" bodyStyle={{ padding: '20px 24px' }}>
               <Statistic
-                title={<Text type="secondary" style={{ fontSize: 13 }}>平均概率</Text>}
+                title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>平均概率</span>}
                 value={(avgProb * 100).toFixed(1)}
                 suffix="%"
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#fa8c16' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#10b981' }}
               />
             </Card>
           </Col>
@@ -147,7 +145,7 @@ export default function History() {
           <Col span={trace ? 14 : 24} style={{ transition: 'all 0.3s ease' }}>
             <Card
               title={
-                <Space><HistoryOutlined style={{ color: '#1677ff' }} /><span style={{ fontWeight: 600 }}>持久化扫雷历史</span></Space>
+                <Space><HistoryOutlined style={{ color: '#3b82f6' }} /><span style={{ fontWeight: 600 }}>持久化扫雷历史</span></Space>
               }
             >
               <Table
@@ -161,7 +159,7 @@ export default function History() {
             <Col span={10} className="slide-in-left">
               <Card
                 title={
-                  <Space><FileTextOutlined style={{ color: '#1677ff' }} />Trace 详情</Space>
+                  <Space><FileTextOutlined style={{ color: '#3b82f6' }} />Trace 详情</Space>
                 }
                 extra={
                   <Button type="text" icon={<CloseOutlined />} onClick={() => setTrace(null)} />
@@ -173,26 +171,26 @@ export default function History() {
                       <Card
                         size="small" key={e.event_id}
                         className="trace-card"
-                        style={{ marginBottom: 8, borderLeftColor: '#1677ff' }}
+                        style={{ marginBottom: 8 }}
                         bodyStyle={{ padding: '10px 14px' }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Space size={8}>
                             <Tag color="blue" style={{ borderRadius: 4, fontWeight: 600 }}>{e.node_name}</Tag>
-                            <Text strong style={{ fontSize: 13 }}>{e.action}</Text>
+                            <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>{e.action}</span>
                           </Space>
-                          <Text type="secondary" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+                          <span style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums', color: 'var(--text-3)' }}>
                             <ClockCircleOutlined style={{ marginRight: 3 }} />{e.duration_ms}ms
                             {e.tokens_used > 0 && (
                               <span style={{ marginLeft: 8 }}>
                                 <ThunderboltOutlined style={{ marginRight: 3 }} />{e.tokens_used}t
                               </span>
                             )}
-                          </Text>
+                          </span>
                         </div>
-                        <div style={{ fontSize: 12, color: '#595959', marginTop: 6 }}>
-                          <div style={{ marginBottom: 2 }}><Text type="secondary">输入：</Text>{e.input_summary}</div>
-                          <div><Text type="secondary">输出：</Text>{e.output_summary}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-2)', marginTop: 6 }}>
+                          <div style={{ marginBottom: 2 }}><span style={{ color: 'var(--text-3)' }}>输入：</span>{e.input_summary}</div>
+                          <div><span style={{ color: 'var(--text-3)' }}>输出：</span>{e.output_summary}</div>
                         </div>
                       </Card>
                     ))}

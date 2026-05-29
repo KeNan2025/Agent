@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Card, Input, Button, Table, Tag, Select, Space, Alert, Row, Col,
-  Statistic, message, Typography, Progress, Badge, Divider,
+  Statistic, message, Progress,
 } from 'antd';
 import {
   ThunderboltOutlined, UploadOutlined, SearchOutlined,
@@ -10,10 +10,12 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { scanBatch } from '../api/client';
 
-const { Text } = Typography;
-
 const riskColorMap: Record<string, string> = {
-  '高风险': '#f5222d', '中风险': '#fa8c16', '低风险': '#52c41a',
+  '高风险': '#ef4444', '中风险': '#f59e0b', '低风险': '#10b981',
+};
+
+const riskBadgeMap: Record<string, string> = {
+  '高风险': 'high', '中风险': 'medium', '低风险': 'low',
 };
 
 export default function BatchScan() {
@@ -42,7 +44,7 @@ export default function BatchScan() {
   const columns = [
     {
       title: '代码', dataIndex: 'company_code', width: 100,
-      render: (v: string) => <Text strong style={{ color: '#1677ff' }}>{v}</Text>,
+      render: (v: string) => <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{v}</span>,
     },
     { title: '名称', dataIndex: 'company_name', width: 130 },
     {
@@ -50,11 +52,11 @@ export default function BatchScan() {
       sorter: (a: any, b: any) => a.inquiry_probability - b.inquiry_probability,
       render: (v: number) => {
         const pct = Math.round(v * 100);
-        const color = v >= 0.6 ? '#f5222d' : v >= 0.3 ? '#fa8c16' : '#52c41a';
+        const color = v >= 0.6 ? '#ef4444' : v >= 0.3 ? '#f59e0b' : '#10b981';
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flex: 1 }}>
-              <div style={{ height: 8, borderRadius: 4, background: '#f0f0f0', overflow: 'hidden' }}>
+              <div style={{ height: 8, borderRadius: 4, background: 'rgba(148,163,184,0.08)', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', width: `${pct}%`, borderRadius: 4,
                   background: `linear-gradient(90deg, ${color}88, ${color})`,
@@ -62,9 +64,9 @@ export default function BatchScan() {
                 }} />
               </div>
             </div>
-            <Text strong style={{ color, minWidth: 40, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+            <span className="text-mono" style={{ fontWeight: 600, color, minWidth: 40, textAlign: 'right' }}>
               {pct}%
-            </Text>
+            </span>
           </div>
         );
       },
@@ -72,21 +74,24 @@ export default function BatchScan() {
     {
       title: '风险等级', dataIndex: 'risk_level', width: 100,
       render: (v: string) => (
-        <Badge
-          color={riskColorMap[v]}
-          text={<Text style={{ color: riskColorMap[v], fontWeight: 600, fontSize: 13 }}>{v}</Text>}
-        />
+        <span className={`risk-badge risk-badge--${riskBadgeMap[v] || 'low'}`}>
+          {v}
+        </span>
       ),
     },
     {
       title: '主要风险', dataIndex: 'top_risk_factor', width: 160,
-      render: (v: string) => <Text ellipsis={{ tooltip: v }} style={{ maxWidth: 150 }}>{v}</Text>,
+      render: (v: string) => (
+        <span style={{ color: 'var(--text-1)', maxWidth: 150, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={v}>
+          {v}
+        </span>
+      ),
     },
     {
       title: '操作', key: 'action', width: 80,
       render: (_: any, r: any) => (
         <a onClick={() => navigate(`/company/${r.company_code}`)}
-           style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+           style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--accent)' }}>
           详情 <RightOutlined style={{ fontSize: 10 }} />
         </a>
       ),
@@ -99,7 +104,7 @@ export default function BatchScan() {
     : 0;
 
   return (
-    <div className="fade-in">
+    <div className="page-container fade-in">
       <div className="page-title">
         <span className="title-bar" />
         批量扫雷
@@ -120,13 +125,19 @@ export default function BatchScan() {
               placeholder={"例如：600001, 000002, 300003\n或每行一个代码"}
               value={codes}
               onChange={(e) => setCodes(e.target.value)}
-              style={{ borderRadius: 8, fontSize: 14 }}
+              style={{
+                borderRadius: 8,
+                fontSize: 14,
+                background: 'var(--bg-input)',
+                color: 'var(--text-1)',
+                borderColor: 'var(--border)',
+              }}
             />
           </Col>
           <Col xs={24} lg={8}>
             <Space direction="vertical" style={{ width: '100%' }} size={12}>
               <div>
-                <Text type="secondary" style={{ fontSize: 12, marginBottom: 4, display: 'block' }}>预测窗口</Text>
+                <span style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 4, display: 'block' }}>预测窗口</span>
                 <Select
                   value={windowDays}
                   onChange={setWindowDays}
@@ -165,33 +176,39 @@ export default function BatchScan() {
         <div className="slide-in-up">
           <Row gutter={[16, 16]} className="stat-row" style={{ marginBottom: 20 }}>
             <Col xs={24} sm={8}>
-              <Card className="stat-card stat-blue" bodyStyle={{ padding: '20px 24px' }}>
-                <SafetyOutlined className="stat-icon" />
+              <Card className="stat-card stat-blue">
+                <span className="stat-icon-bg">
+                  <SafetyOutlined />
+                </span>
                 <Statistic
-                  title={<Text type="secondary" style={{ fontSize: 13 }}>扫描公司数</Text>}
+                  title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>扫描公司数</span>}
                   value={results.total}
-                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#1677ff' }}
+                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#60a5fa' }}
                 />
               </Card>
             </Col>
             <Col xs={24} sm={8}>
-              <Card className="stat-card stat-red" bodyStyle={{ padding: '20px 24px' }}>
-                <WarningOutlined className="stat-icon" />
+              <Card className="stat-card stat-red">
+                <span className="stat-icon-bg">
+                  <WarningOutlined />
+                </span>
                 <Statistic
-                  title={<Text type="secondary" style={{ fontSize: 13 }}>高风险公司</Text>}
+                  title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>高风险公司</span>}
                   value={highCount}
-                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#f5222d' }}
+                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#f87171' }}
                 />
               </Card>
             </Col>
             <Col xs={24} sm={8}>
-              <Card className="stat-card stat-orange" bodyStyle={{ padding: '20px 24px' }}>
-                <SearchOutlined className="stat-icon" />
+              <Card className="stat-card stat-orange">
+                <span className="stat-icon-bg">
+                  <SearchOutlined />
+                </span>
                 <Statistic
-                  title={<Text type="secondary" style={{ fontSize: 13 }}>最高概率</Text>}
+                  title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>最高概率</span>}
                   value={(maxProb * 100).toFixed(1)}
                   suffix="%"
-                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#fa8c16' }}
+                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#fbbf24' }}
                 />
               </Card>
             </Col>
@@ -199,11 +216,12 @@ export default function BatchScan() {
 
           <Card
             title={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <SearchOutlined style={{ color: '#1677ff' }} />
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span className="title-accent-bar" />
+                <SearchOutlined style={{ color: 'var(--accent)' }} />
                 <span style={{ fontWeight: 600 }}>扫雷结果</span>
                 <Tag color="blue">{results.total} 家</Tag>
-              </div>
+              </span>
             }
           >
             <Table

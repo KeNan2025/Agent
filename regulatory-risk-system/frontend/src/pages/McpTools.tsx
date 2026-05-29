@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
 import {
   Card, Table, Tag, Button, Space, Alert,
-  Input, Spin, message, Row, Col, Statistic, Typography, Progress,
+  Input, Spin, message, Row, Col, Statistic, Progress,
 } from 'antd';
 import { ApiOutlined, ThunderboltOutlined, PlayCircleOutlined, CloseOutlined } from '@ant-design/icons';
 import { mcpListTools, mcpCallTool, mcpToolStats } from '../api/client';
-
-const { Text, Paragraph } = Typography;
 
 export default function McpTools() {
   const [tools, setTools] = useState<any[]>([]);
@@ -59,29 +57,29 @@ export default function McpTools() {
     },
     {
       title: '描述', dataIndex: 'description',
-      render: (v: string) => <Text ellipsis={{ tooltip: v }} style={{ maxWidth: 300 }}>{v}</Text>,
+      render: (v: string) => <span style={{ color: 'var(--text-2)', maxWidth: 300, display: 'inline-block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v}</span>,
     },
     {
       title: '调用次数 (24h)', key: 'calls', width: 130,
       render: (_: any, r: any) => {
         const count = stats[r.name]?.count || 0;
-        return <Text strong style={{ fontVariantNumeric: 'tabular-nums' }}>{count}</Text>;
+        return <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>{count}</span>;
       },
     },
     {
       title: '成功率', key: 'success_rate', width: 120,
       render: (_: any, r: any) => {
         const s = stats[r.name]?.success_rate;
-        if (s === undefined) return <Text type="secondary">-</Text>;
+        if (s === undefined) return <span style={{ color: 'var(--text-3)' }}>-</span>;
         const pct = Math.round(s * 100);
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Progress
               percent={pct} size="small" showInfo={false}
-              strokeColor={pct >= 90 ? '#52c41a' : pct >= 70 ? '#faad14' : '#f5222d'}
+              strokeColor={pct >= 90 ? '#10b981' : pct >= 70 ? '#f59e0b' : '#ef4444'}
               style={{ width: 60, margin: 0 }}
             />
-            <Text style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{pct}%</Text>
+            <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>{pct}%</span>
           </div>
         );
       },
@@ -91,8 +89,8 @@ export default function McpTools() {
       render: (_: any, r: any) => {
         const ms = stats[r.name]?.avg_ms;
         return ms != null
-          ? <Text style={{ fontVariantNumeric: 'tabular-nums' }}>{ms} ms</Text>
-          : <Text type="secondary">-</Text>;
+          ? <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>{ms} ms</span>
+          : <span style={{ color: 'var(--text-3)' }}>-</span>;
       },
     },
     {
@@ -110,7 +108,7 @@ export default function McpTools() {
 
   return (
     <Spin spinning={loading}>
-      <div className="fade-in">
+      <div className="page-container fade-in">
         <div className="page-title">
           <span className="title-bar" />
           MCP 工具注册中心
@@ -121,19 +119,19 @@ export default function McpTools() {
             <Card className="stat-card stat-purple" bodyStyle={{ padding: '20px 24px' }}>
               <ApiOutlined className="stat-icon" />
               <Statistic
-                title={<Text type="secondary" style={{ fontSize: 13 }}>可挂载 Skill</Text>}
+                title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>可挂载 Skill</span>}
                 value={tools.length}
                 valueStyle={{ fontSize: 28, fontWeight: 700, color: '#722ed1' }}
               />
             </Card>
           </Col>
           <Col xs={12} sm={8}>
-            <Card className="stat-card stat-blue" bodyStyle={{ padding: '20px 24px' }}>
+            <Card className="stat-card stat-cyan" bodyStyle={{ padding: '20px 24px' }}>
               <ThunderboltOutlined className="stat-icon" />
               <Statistic
-                title={<Text type="secondary" style={{ fontSize: 13 }}>24h 总调用</Text>}
+                title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>24h 总调用</span>}
                 value={totalCalls}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#1677ff' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#06b6d4' }}
               />
             </Card>
           </Col>
@@ -143,9 +141,9 @@ export default function McpTools() {
                 type="info" showIcon
                 message="MCP 兼容接口"
                 description={
-                  <Text style={{ fontSize: 12 }}>
+                  <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
                     POST /mcp/v1/tools/list 与 /tools/call 暴露所有 Skill
-                  </Text>
+                  </span>
                 }
                 style={{ borderRadius: 8 }}
               />
@@ -171,7 +169,7 @@ export default function McpTools() {
               <Card
                 title={
                   <Space>
-                    <PlayCircleOutlined style={{ color: '#1677ff' }} />
+                    <PlayCircleOutlined style={{ color: '#3b82f6' }} />
                     <span>调用</span>
                     <Tag color="purple" style={{ borderRadius: 4 }}>{selected.name}</Tag>
                   </Space>
@@ -180,13 +178,13 @@ export default function McpTools() {
                   <Button type="text" icon={<CloseOutlined />} onClick={() => setSelected(null)} />
                 }
               >
-                <Paragraph type="secondary" style={{ fontSize: 13 }}>{selected.description}</Paragraph>
-                <Text strong style={{ fontSize: 13 }}>参数 (JSON):</Text>
+                <p style={{ color: 'var(--text-3)', fontSize: 13 }}>{selected.description}</p>
+                <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-1)' }}>参数 (JSON):</span>
                 <Input.TextArea
                   rows={6}
                   value={args}
                   onChange={(e) => setArgs(e.target.value)}
-                  style={{ marginTop: 8, fontFamily: "'SF Mono', 'Fira Code', Consolas, monospace", fontSize: 12, borderRadius: 8 }}
+                  style={{ marginTop: 8, background: 'var(--bg-input)', color: 'var(--text-1)', fontFamily: 'monospace', borderColor: 'var(--border)', fontSize: 12, borderRadius: 8 }}
                 />
                 <Button
                   type="primary"
@@ -202,16 +200,20 @@ export default function McpTools() {
                     size="small" className="result-panel"
                     style={{
                       marginTop: 12,
-                      borderLeft: `3px solid ${result.ok ? '#52c41a' : '#f5222d'}`,
+                      borderLeft: `3px solid ${result.ok ? '#10b981' : '#ef4444'}`,
+                      ...(result.ok
+                        ? { background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }
+                        : { background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)' }
+                      ),
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                       <Tag color={result.ok ? 'green' : 'red'} style={{ borderRadius: 4 }}>
                         {result.ok ? '成功' : '失败'}
                       </Tag>
-                      <Text type="secondary" style={{ fontSize: 12 }}>{result.duration_ms} ms</Text>
+                      <span style={{ fontSize: 12, color: 'var(--text-3)' }}>{result.duration_ms} ms</span>
                     </div>
-                    <pre style={{ maxHeight: 320, overflow: 'auto', fontSize: 12, lineHeight: 1.6, margin: 0 }}>
+                    <pre className="text-mono" style={{ maxHeight: 320, overflow: 'auto', fontSize: 12, lineHeight: 1.6, margin: 0, color: 'var(--text-2)' }}>
                       {JSON.stringify(result, null, 2)}
                     </pre>
                   </Card>

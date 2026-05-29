@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Layout, Menu, Typography, Breadcrumb } from 'antd';
+import { Layout, Menu } from 'antd';
 import {
   DashboardOutlined,
   SearchOutlined,
@@ -57,22 +57,11 @@ function AppLayout() {
       <Sider
         theme="dark"
         width={220}
-        className="app-sider"
-        style={{
-          background: 'linear-gradient(180deg, #001529 0%, #002140 100%)',
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          zIndex: 100,
-          overflow: 'auto',
-        }}
+        className="app-sider bg-sider-gradient"
       >
         <div className="sidebar-logo">
-          <div className="logo-icon">
-            <SafetyCertificateOutlined />
-          </div>
-          <span className="logo-text">扫雷预警系统</span>
+          <span className="logo-icon"><ThunderboltOutlined /></span>
+          <span className="logo-text">扫雷预警</span>
         </div>
         <Menu
           theme="dark"
@@ -82,42 +71,24 @@ function AppLayout() {
           onClick={({ key }) => navigate(key)}
           style={{ background: 'transparent', borderRight: 'none' }}
         />
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          padding: '16px 20px',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          <Typography.Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11 }}>
-            Agentic AI Platform
-          </Typography.Text>
+        <div className="sider-footer">
+          <span className="sider-footer-brand">Agentic AI Platform</span>
           <br />
-          <Typography.Text style={{ color: 'rgba(255,255,255,0.2)', fontSize: 10 }}>
-            v1.0.0
-          </Typography.Text>
+          <span className="sider-footer-version">v1.0.0</span>
         </div>
       </Sider>
       <Layout style={{ marginLeft: 220 }}>
-        <Header className="app-header" style={{ height: 56, lineHeight: '56px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <Breadcrumb
-              items={[
-                { title: '首页' },
-                ...(currentTitle ? [{ title: currentTitle }] : []),
-              ]}
-              style={{ fontSize: 13 }}
-            />
-          </div>
+        <Header className="app-header">
+          <span className="header-title">上市公司监管问询概率预测与扫雷预警系统</span>
           <div className="header-right">
-            <div className="header-badge">
+            <span className="header-badge">
               <span className="dot" />
               系统运行中
-            </div>
-            <Typography.Text style={{ fontSize: 13, color: '#8c8c8c' }}>
-              Agentic AI
-            </Typography.Text>
+            </span>
+            <span className="header-time">2026-05-29</span>
           </div>
         </Header>
-        <Content className="app-content">
+        <Content className="app-content fade-in">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/company/:code" element={<CompanyDetail />} />

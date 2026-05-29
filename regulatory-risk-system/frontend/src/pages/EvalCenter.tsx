@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import {
-  Card, Button, Table, Input, Tabs, Spin, Tag, Row, Col, Statistic, Alert, Typography, Space, Badge,
+  Card, Button, Table, Input, Tabs, Spin, Tag, Row, Col, Statistic, Alert, Space, Badge,
 } from 'antd';
 import {
   ExperimentOutlined, ThunderboltOutlined, TrophyOutlined,
   CheckCircleOutlined, CloseCircleOutlined,
 } from '@ant-design/icons';
 import { evalAblation, evalBaseline, evalJudge } from '../api/client';
-
-const { Text } = Typography;
 
 export default function EvalCenter() {
   const [tab, setTab] = useState('ablation');
@@ -39,7 +37,7 @@ export default function EvalCenter() {
   };
 
   return (
-    <div className="fade-in">
+    <div className="page-container fade-in">
       <div className="page-title">
         <span className="title-bar" />
         评估中心
@@ -75,7 +73,7 @@ export default function EvalCenter() {
                         <Col xs={12} sm={6}>
                           <Card className="stat-card stat-blue" bodyStyle={{ padding: '16px 20px' }}>
                             <Statistic
-                              title={<Text type="secondary" style={{ fontSize: 12 }}>完整模型 AUC-ROC</Text>}
+                              title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>完整模型 AUC-ROC</span>}
                               value={ablation.full_model.auc_roc.toFixed(3)}
                               valueStyle={{ fontSize: 24, fontWeight: 700, color: '#1677ff' }}
                             />
@@ -84,7 +82,7 @@ export default function EvalCenter() {
                         <Col xs={12} sm={6}>
                           <Card className="stat-card stat-purple" bodyStyle={{ padding: '16px 20px' }}>
                             <Statistic
-                              title={<Text type="secondary" style={{ fontSize: 12 }}>完整模型 AUC-PR</Text>}
+                              title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>完整模型 AUC-PR</span>}
                               value={ablation.full_model.auc_pr.toFixed(3)}
                               valueStyle={{ fontSize: 24, fontWeight: 700, color: '#722ed1' }}
                             />
@@ -93,18 +91,18 @@ export default function EvalCenter() {
                         <Col xs={12} sm={6}>
                           <Card className="stat-card stat-green" bodyStyle={{ padding: '16px 20px' }}>
                             <Statistic
-                              title={<Text type="secondary" style={{ fontSize: 12 }}>完整模型 F1</Text>}
+                              title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>完整模型 F1</span>}
                               value={ablation.full_model.f1.toFixed(3)}
-                              valueStyle={{ fontSize: 24, fontWeight: 700, color: '#52c41a' }}
+                              valueStyle={{ fontSize: 24, fontWeight: 700, color: '#10b981' }}
                             />
                           </Card>
                         </Col>
                         <Col xs={12} sm={6}>
-                          <Card className="stat-card stat-orange" bodyStyle={{ padding: '16px 20px' }}>
+                          <Card className="stat-card stat-cyan" bodyStyle={{ padding: '16px 20px' }}>
                             <Statistic
-                              title={<Text type="secondary" style={{ fontSize: 12 }}>正样本率</Text>}
+                              title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>正样本率</span>}
                               value={`${(ablation.summary.positive_rate * 100).toFixed(1)}%`}
-                              valueStyle={{ fontSize: 24, fontWeight: 700, color: '#fa8c16' }}
+                              valueStyle={{ fontSize: 24, fontWeight: 700, color: '#06b6d4' }}
                             />
                           </Card>
                         </Col>
@@ -115,19 +113,19 @@ export default function EvalCenter() {
                         columns={[
                           {
                             title: '实验', dataIndex: 'name', width: 280,
-                            render: (v: string) => <Text strong>{v}</Text>,
+                            render: (v: string) => <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{v}</span>,
                           },
                           {
                             title: 'AUC-ROC', dataIndex: 'auc_roc', width: 100,
-                            render: (v: number) => <Text style={{ fontVariantNumeric: 'tabular-nums' }}>{v.toFixed(3)}</Text>,
+                            render: (v: number) => <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>{v.toFixed(3)}</span>,
                           },
                           {
                             title: 'AUC-PR', dataIndex: 'auc_pr', width: 100,
-                            render: (v: number) => <Text style={{ fontVariantNumeric: 'tabular-nums' }}>{v?.toFixed?.(3) ?? '-'}</Text>,
+                            render: (v: number) => <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>{v?.toFixed?.(3) ?? '-'}</span>,
                           },
                           {
                             title: 'F1', dataIndex: 'f1', width: 90,
-                            render: (v: number) => <Text style={{ fontVariantNumeric: 'tabular-nums' }}>{v.toFixed(3)}</Text>,
+                            render: (v: number) => <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>{v.toFixed(3)}</span>,
                           },
                           {
                             title: 'ΔAUC vs 完整', key: 'delta', width: 130,
@@ -150,8 +148,8 @@ export default function EvalCenter() {
                     </div>
                   ) : (
                     <div className="empty-action">
-                      <ExperimentOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
-                      <Text type="secondary">点击「运行实验」开始消融分析</Text>
+                      <ExperimentOutlined style={{ fontSize: 48, color: 'var(--text-3)' }} />
+                      <span style={{ color: 'var(--text-3)' }}>点击「运行实验」开始消融分析</span>
                     </div>
                   )}
                 </Spin>
@@ -164,7 +162,7 @@ export default function EvalCenter() {
             children: (
               <Card
                 title={
-                  <Space><TrophyOutlined style={{ color: '#fa8c16' }} /><span style={{ fontWeight: 600 }}>4 组基线对比</span></Space>
+                  <Space><TrophyOutlined style={{ color: '#f59e0b' }} /><span style={{ fontWeight: 600 }}>4 组基线对比</span></Space>
                 }
                 extra={
                   <Button type="primary" onClick={runBaseline} loading={blLoading}
@@ -178,29 +176,29 @@ export default function EvalCenter() {
                     <div className="slide-in-up">
                       <Card
                         size="small"
-                        style={{ marginBottom: 20, background: 'linear-gradient(135deg, #e6f4ff, #f0f5ff)', border: '1px solid #91caff' }}
+                        style={{ marginBottom: 20, background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.12)', borderRadius: 12 }}
                         bodyStyle={{ padding: '12px 20px' }}
                       >
                         <Row gutter={16}>
                           <Col xs={8}>
                             <Statistic
-                              title={<Text type="secondary" style={{ fontSize: 12 }}>完整模型 AUC-ROC</Text>}
+                              title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>完整模型 AUC-ROC</span>}
                               value={baseline.full_model.auc_roc.toFixed(3)}
-                              valueStyle={{ color: '#1677ff', fontWeight: 700, fontSize: 22 }}
+                              valueStyle={{ color: '#3b82f6', fontWeight: 700, fontSize: 22 }}
                             />
                           </Col>
                           <Col xs={8}>
                             <Statistic
-                              title={<Text type="secondary" style={{ fontSize: 12 }}>完整模型 AUC-PR</Text>}
+                              title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>完整模型 AUC-PR</span>}
                               value={baseline.full_model.auc_pr.toFixed(3)}
-                              valueStyle={{ fontSize: 22 }}
+                              valueStyle={{ fontSize: 22, color: 'var(--text-1)' }}
                             />
                           </Col>
                           <Col xs={8}>
                             <Statistic
-                              title={<Text type="secondary" style={{ fontSize: 12 }}>完整模型 F1</Text>}
+                              title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>完整模型 F1</span>}
                               value={baseline.full_model.f1.toFixed(3)}
-                              valueStyle={{ fontSize: 22 }}
+                              valueStyle={{ fontSize: 22, color: 'var(--text-1)' }}
                             />
                           </Col>
                         </Row>
@@ -211,19 +209,19 @@ export default function EvalCenter() {
                         columns={[
                           {
                             title: '基线方法', dataIndex: 'name', width: 240,
-                            render: (v: string) => <Text strong>{v}</Text>,
+                            render: (v: string) => <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{v}</span>,
                           },
                           {
                             title: 'AUC-ROC', dataIndex: 'auc_roc', width: 120,
-                            render: (v: number) => <Text style={{ fontVariantNumeric: 'tabular-nums' }}>{v.toFixed(3)}</Text>,
+                            render: (v: number) => <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>{v.toFixed(3)}</span>,
                           },
                           {
                             title: 'AUC-PR', dataIndex: 'auc_pr', width: 120,
-                            render: (v: number) => <Text style={{ fontVariantNumeric: 'tabular-nums' }}>{(v ?? null) === null ? '-' : v.toFixed(3)}</Text>,
+                            render: (v: number) => <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>{(v ?? null) === null ? '-' : v.toFixed(3)}</span>,
                           },
                           {
                             title: 'F1', dataIndex: 'f1', width: 120,
-                            render: (v: number) => <Text style={{ fontVariantNumeric: 'tabular-nums' }}>{v.toFixed(3)}</Text>,
+                            render: (v: number) => <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>{v.toFixed(3)}</span>,
                           },
                           {
                             title: 'Δ AUC', key: 'delta', width: 120,
@@ -245,8 +243,8 @@ export default function EvalCenter() {
                     </div>
                   ) : (
                     <div className="empty-action">
-                      <TrophyOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
-                      <Text type="secondary">点击「运行对比」开始基线对比</Text>
+                      <TrophyOutlined style={{ fontSize: 48, color: 'var(--text-3)' }} />
+                      <span style={{ color: 'var(--text-3)' }}>点击「运行对比」开始基线对比</span>
                     </div>
                   )}
                 </Spin>
@@ -268,7 +266,7 @@ export default function EvalCenter() {
                     value={judgeCode}
                     onChange={(e) => setJudgeCode(e.target.value)}
                     placeholder="公司代码"
-                    prefix={<Text type="secondary" style={{ fontSize: 12 }}>代码</Text>}
+                    prefix={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>代码</span>}
                   />
                   <Button type="primary" onClick={runJudge} loading={judgeLoading} icon={<ThunderboltOutlined />}>
                     评估
@@ -282,37 +280,38 @@ export default function EvalCenter() {
                         {Object.entries(judgeResult.scores || {}).map(([k, v]: any) => (
                           <Col xs={8} sm={4} key={k}>
                             <Card size="small" className="stat-card stat-blue" bodyStyle={{ padding: '12px 16px', textAlign: 'center' }}>
-                              <Text type="secondary" style={{ fontSize: 11 }}>{k}</Text>
-                              <div style={{ fontSize: 22, fontWeight: 700, color: '#1677ff', fontVariantNumeric: 'tabular-nums' }}>{v}</div>
+                              <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{k}</span>
+                              <div style={{ fontSize: 22, fontWeight: 700, color: '#3b82f6', fontVariantNumeric: 'tabular-nums' }}>{v}</div>
                             </Card>
                           </Col>
                         ))}
                         <Col xs={8} sm={4}>
                           <Card
-                            size="small" className="stat-card stat-orange"
+                            size="small"
+                            style={{ background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.12)' }}
                             bodyStyle={{ padding: '12px 16px', textAlign: 'center' }}
                           >
-                            <Text type="secondary" style={{ fontSize: 11 }}>加权总分</Text>
-                            <div style={{ fontSize: 22, fontWeight: 800, color: '#fa8c16', fontVariantNumeric: 'tabular-nums' }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>加权总分</span>
+                            <div style={{ fontSize: 22, fontWeight: 800, color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>
                               {judgeResult.weighted_total}
                             </div>
                           </Card>
                         </Col>
                       </Row>
                       {judgeResult.issues?.length > 0 && (
-                        <Card size="small" title={<Space><CloseCircleOutlined style={{ color: '#f5222d' }} />发现问题</Space>} style={{ marginBottom: 12 }}>
+                        <Card size="small" title={<Space><CloseCircleOutlined style={{ color: '#ef4444' }} />发现问题</Space>} style={{ marginBottom: 12 }}>
                           <ul style={{ margin: 0, paddingLeft: 20 }}>
                             {judgeResult.issues.map((s: string, i: number) => (
-                              <li key={i} style={{ color: '#595959', marginBottom: 4 }}>{s}</li>
+                              <li key={i} style={{ color: 'var(--text-2)', marginBottom: 4 }}>{s}</li>
                             ))}
                           </ul>
                         </Card>
                       )}
                       {judgeResult.suggestions?.length > 0 && (
-                        <Card size="small" title={<Space><CheckCircleOutlined style={{ color: '#52c41a' }} />改进建议</Space>}>
+                        <Card size="small" title={<Space><CheckCircleOutlined style={{ color: '#10b981' }} />改进建议</Space>}>
                           <ul style={{ margin: 0, paddingLeft: 20 }}>
                             {judgeResult.suggestions.map((s: string, i: number) => (
-                              <li key={i} style={{ color: '#595959', marginBottom: 4 }}>{s}</li>
+                              <li key={i} style={{ color: 'var(--text-2)', marginBottom: 4 }}>{s}</li>
                             ))}
                           </ul>
                         </Card>
@@ -320,8 +319,8 @@ export default function EvalCenter() {
                     </div>
                   ) : (
                     <div className="empty-action">
-                      <ExperimentOutlined style={{ fontSize: 48, color: '#d9d9d9' }} />
-                      <Text type="secondary">输入公司代码并点击「评估」</Text>
+                      <ExperimentOutlined style={{ fontSize: 48, color: 'var(--text-3)' }} />
+                      <span style={{ color: 'var(--text-3)' }}>输入公司代码并点击「评估」</span>
                     </div>
                   )}
                 </Spin>

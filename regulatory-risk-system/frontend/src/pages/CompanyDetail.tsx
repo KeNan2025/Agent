@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Card, Row, Col, Tag, Table, Timeline, Progress, Spin, Button,
-  Tabs, Statistic, Alert, Typography, Collapse, Space, Tooltip,
+  Tabs, Statistic, Alert, Collapse, Space, Tooltip,
   Descriptions, Empty, Badge, Divider,
 } from 'antd';
 import {
@@ -15,12 +15,16 @@ import {
 import ReactMarkdown from 'react-markdown';
 import { scanSingle, getFinancial, getGraph } from '../api/client';
 
-const { Title, Text, Paragraph } = Typography;
-
 const riskColorMap: Record<string, string> = {
-  '高风险': '#f5222d',
-  '中风险': '#fa8c16',
-  '低风险': '#52c41a',
+  '高风险': '#ef4444',
+  '中风险': '#f59e0b',
+  '低风险': '#10b981',
+};
+
+const riskBadgeMap: Record<string, string> = {
+  '高风险': 'high',
+  '中风险': 'medium',
+  '低风险': 'low',
 };
 
 const severityColor: Record<string, string> = {
@@ -56,10 +60,10 @@ export default function CompanyDetail() {
       <div style={{ textAlign: 'center', padding: 120 }}>
         <Spin size="large" />
         <div style={{ marginTop: 20 }}>
-          <Text type="secondary" style={{ fontSize: 15 }}>Agent 智能分析中...</Text>
+          <span style={{ fontSize: 15, color: 'var(--text-2)' }}>Agent 智能分析中...</span>
         </div>
         <div style={{ marginTop: 8 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>正在调度多智能体协作完成风险评估</Text>
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>正在调度多智能体协作完成风险评估</span>
         </div>
       </div>
     );
@@ -68,28 +72,38 @@ export default function CompanyDetail() {
   if (!data) return <Alert message="未找到该公司" type="error" showIcon />;
 
   const prob = data.inquiry_probability;
-  const riskColor = riskColorMap[data.risk_level] || '#999';
+  const riskColor = riskColorMap[data.risk_level] || '#64748b';
   const pct = Math.round(prob * 100);
 
   return (
-    <div className="fade-in">
+    <div className="page-container fade-in">
       <Button
         icon={<ArrowLeftOutlined />}
         onClick={() => navigate('/')}
-        style={{ marginBottom: 20 }}
         type="text"
+        style={{ marginBottom: 20, color: 'var(--text-2)' }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
+        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-2)')}
       >
         返回排行榜
       </Button>
 
       <Row gutter={[20, 20]} style={{ marginBottom: 20 }}>
         <Col xs={24} lg={8}>
-          <Card bodyStyle={{ padding: '28px 24px', textAlign: 'center' }}>
+          <Card
+            bodyStyle={{
+              padding: '28px 24px',
+              textAlign: 'center',
+              background: 'linear-gradient(135deg, rgba(59,130,246,0.06), rgba(99,102,241,0.04))',
+            }}
+          >
             <div style={{ marginBottom: 8 }}>
-              <Title level={4} style={{ margin: 0 }}>{data.company.name}</Title>
-              <Text type="secondary" style={{ fontSize: 13 }}>
+              <div style={{ fontSize: 18, fontWeight: 600, margin: 0, color: 'var(--text-1)' }}>
+                {data.company.name}
+              </div>
+              <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
                 {data.company.code} · {data.company.industry}
-              </Text>
+              </span>
             </div>
 
             <div className="gauge-container" style={{ margin: '24px 0 16px' }}>
@@ -100,13 +114,13 @@ export default function CompanyDetail() {
                   '0%': riskColor + '88',
                   '100%': riskColor,
                 }}
-                trailColor="#f0f0f0"
+                trailColor="rgba(148,163,184,0.08)"
                 format={() => (
                   <div>
-                    <div style={{ fontSize: 36, fontWeight: 800, color: riskColor, lineHeight: 1 }}>
+                    <div style={{ fontSize: 36, fontWeight: 700, color: riskColor, lineHeight: 1 }}>
                       {pct}
                     </div>
-                    <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 4 }}>问询概率(%)</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 4 }}>问询概率(%)</div>
                   </div>
                 )}
                 size={180}
@@ -114,29 +128,26 @@ export default function CompanyDetail() {
               />
             </div>
 
-            <Tag
-              color={riskColor}
-              style={{ fontSize: 14, padding: '4px 20px', borderRadius: 20, fontWeight: 600 }}
-            >
+            <span className={`risk-badge risk-badge--${riskBadgeMap[data.risk_level] || 'low'}`}>
               {data.risk_level}
-            </Tag>
+            </span>
 
-            <Divider style={{ margin: '16px 0 12px' }} />
+            <Divider style={{ margin: '16px 0 12px', borderColor: 'var(--divider)' }} />
 
             <Row gutter={16}>
               <Col span={12}>
                 <Statistic
-                  title={<Text type="secondary" style={{ fontSize: 12 }}>预测窗口</Text>}
+                  title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>预测窗口</span>}
                   value={windowDays}
                   suffix="天"
-                  valueStyle={{ fontSize: 18 }}
+                  valueStyle={{ fontSize: 18, color: 'var(--text-1)' }}
                 />
               </Col>
               <Col span={12}>
                 <Statistic
-                  title={<Text type="secondary" style={{ fontSize: 12 }}>置信度</Text>}
+                  title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>置信度</span>}
                   value={data.confidence}
-                  valueStyle={{ fontSize: 18 }}
+                  valueStyle={{ fontSize: 18, color: 'var(--text-3)' }}
                 />
               </Col>
             </Row>
@@ -147,38 +158,38 @@ export default function CompanyDetail() {
           <Card
             title={
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <FundOutlined style={{ color: '#1677ff' }} />
+                <FundOutlined style={{ color: 'var(--accent)' }} />
                 <span>SHAP 特征贡献分解</span>
                 <Tooltip title="SHAP 值表示每个特征对最终预测概率的贡献程度">
-                  <ExclamationCircleOutlined style={{ color: '#bfbfbf', fontSize: 14, cursor: 'help' }} />
+                  <ExclamationCircleOutlined style={{ color: 'var(--text-3)', fontSize: 14, cursor: 'help' }} />
                 </Tooltip>
               </div>
             }
             bodyStyle={{ padding: '12px 24px' }}
           >
             {data.shap_features.map((f: any, i: number) => {
-              const barColor = f.shap_value > 0.05 ? '#f5222d' : f.shap_value > 0.02 ? '#fa8c16' : '#1677ff';
+              const barColor = f.shap_value > 0.05 ? '#ef4444' : f.shap_value > 0.02 ? '#f59e0b' : '#3b82f6';
               const barWidth = Math.max(4, Math.round((f.shap_value / prob) * 100));
               return (
                 <div key={i} className="shap-row">
-                  <div style={{ width: 130, textAlign: 'right', paddingRight: 16, fontSize: 13, fontWeight: 500, color: '#595959' }}>
+                  <div style={{ width: 130, textAlign: 'right', paddingRight: 16, fontSize: 13, fontWeight: 500, color: 'var(--text-2)' }}>
                     {f.feature_name}
                   </div>
                   <Tooltip title={f.description} placement="top">
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ flex: 1, height: 10, borderRadius: 5, background: '#f5f5f5', overflow: 'hidden' }}>
+                      <div style={{ flex: 1, height: 10, borderRadius: 5, background: 'rgba(148,163,184,0.08)', overflow: 'hidden' }}>
                         <div style={{
                           height: '100%', width: `${barWidth}%`, borderRadius: 5,
                           background: `linear-gradient(90deg, ${barColor}66, ${barColor})`,
                           transition: 'width 0.8s ease',
                         }} />
                       </div>
-                      <Text strong style={{ color: barColor, minWidth: 56, textAlign: 'right', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>
+                      <span className="text-mono" style={{ color: barColor, minWidth: 56, textAlign: 'right', fontSize: 13, fontWeight: 600 }}>
                         +{(f.shap_value * 100).toFixed(1)}%
-                      </Text>
+                      </span>
                     </div>
                   </Tooltip>
-                  <div style={{ width: 90, paddingLeft: 12, fontSize: 12, color: '#8c8c8c', textAlign: 'right' }}>
+                  <div className="text-mono" style={{ width: 90, paddingLeft: 12, fontSize: 12, color: 'var(--text-3)', textAlign: 'right' }}>
                     {f.feature_value}
                   </div>
                 </div>
@@ -223,7 +234,7 @@ export default function CompanyDetail() {
             label: <><FileTextOutlined /> 完整报告</>,
             children: (
               <Card>
-                <div className="markdown-body" style={{ maxHeight: 600, overflow: 'auto', padding: '0 8px' }}>
+                <div className="markdown-body" style={{ maxHeight: 650, overflow: 'auto', padding: '0 8px' }}>
                   <ReactMarkdown>{data.report_markdown}</ReactMarkdown>
                 </div>
               </Card>
@@ -249,28 +260,28 @@ function RiskFactorsPanel({ factors }: { factors: any[] }) {
               {f.severity}风险
             </Tag>
             <Tag color="blue" style={{ borderRadius: 4 }}>{f.category}</Tag>
-            <Text strong style={{ fontSize: 14 }}>{f.subcategory}</Text>
-            <Text type="secondary" style={{ fontSize: 12, marginLeft: 'auto' }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>{f.subcategory}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 'auto' }}>
               置信度 {(f.confidence * 100).toFixed(0)}%
-            </Text>
+            </span>
           </div>
         ),
         children: (
           <div style={{ padding: '4px 0' }}>
-            <Paragraph style={{ fontSize: 14, color: '#595959', marginBottom: 12 }}>
+            <p style={{ fontSize: 14, color: 'var(--text-1)', marginBottom: 12 }}>
               {f.description}
-            </Paragraph>
+            </p>
             <Card size="small" className="evidence-card" bodyStyle={{ padding: '12px 16px' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>原文证据</Text>
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>原文证据</span>
               <div style={{ marginTop: 4 }}>
-                <Text italic style={{ fontSize: 13, lineHeight: 1.8 }}>"{f.evidence_quote}"</Text>
+                <span style={{ fontSize: 13, lineHeight: 1.8, fontStyle: 'italic', color: 'var(--text-1)' }}>"{f.evidence_quote}"</span>
               </div>
             </Card>
             <div style={{ marginTop: 10 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
                 <FileTextOutlined style={{ marginRight: 4 }} />
                 来源：{f.evidence_source}
-              </Text>
+              </span>
             </div>
           </div>
         ),
@@ -283,7 +294,7 @@ function FinancialPanel({ financial }: { financial: any }) {
   if (!financial) return <Empty description="财务数据不可用" />;
   const groups = [
     {
-      title: '盈利能力', icon: <RiseOutlined style={{ color: '#1677ff' }} />,
+      title: '盈利能力', icon: <RiseOutlined style={{ color: '#3b82f6' }} />,
       items: [
         { label: 'ROE', value: `${financial.roe}%`, warn: financial.roe < 5 },
         { label: 'ROA', value: `${financial.roa}%`, warn: financial.roa < 3 },
@@ -292,21 +303,21 @@ function FinancialPanel({ financial }: { financial: any }) {
       ],
     },
     {
-      title: '偿债能力', icon: <SafetyCertificateOutlined style={{ color: '#52c41a' }} />,
+      title: '偿债能力', icon: <SafetyCertificateOutlined style={{ color: '#10b981' }} />,
       items: [
         { label: '资产负债率', value: `${financial.debt_ratio}%`, warn: financial.debt_ratio > 65 },
         { label: '流动比率', value: financial.current_ratio, warn: financial.current_ratio < 1 },
       ],
     },
     {
-      title: '营运能力', icon: <FundOutlined style={{ color: '#fa8c16' }} />,
+      title: '营运能力', icon: <FundOutlined style={{ color: '#f59e0b' }} />,
       items: [
         { label: '应收周转率', value: financial.receivable_turnover, warn: financial.receivable_turnover < 3 },
         { label: '存货周转率', value: financial.inventory_turnover, warn: financial.inventory_turnover < 3 },
       ],
     },
     {
-      title: '现金流与增长', icon: <ArrowLeftOutlined style={{ color: '#13c2c2', transform: 'rotate(-90deg)' }} />,
+      title: '现金流与增长', icon: <ArrowLeftOutlined style={{ color: '#06b6d4', transform: 'rotate(-90deg)' }} />,
       items: [
         { label: '经营现金流/净利润', value: financial.ocf_to_profit, warn: financial.ocf_to_profit < 0.3 },
         { label: '营收增速', value: `${financial.revenue_growth}%`, warn: false },
@@ -315,7 +326,7 @@ function FinancialPanel({ financial }: { financial: any }) {
       ],
     },
     {
-      title: '异常检测指标', icon: <WarningOutlined style={{ color: '#f5222d' }} />,
+      title: '异常检测指标', icon: <WarningOutlined style={{ color: '#ef4444' }} />,
       items: [
         { label: 'Beneish M-Score', value: financial.beneish_m_score, warn: financial.beneish_m_score > -1.78 },
         { label: 'Altman Z-Score', value: financial.altman_z_score, warn: financial.altman_z_score < 1.8 },
@@ -338,17 +349,13 @@ function FinancialPanel({ financial }: { financial: any }) {
               {g.items.map((it) => (
                 <Descriptions.Item key={it.label} label={it.label}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Text strong style={{ color: it.warn ? '#f5222d' : '#1f1f1f' }}>
+                    <span style={{ fontWeight: 600, color: it.warn ? '#f87171' : 'var(--text-1)' }}>
                       {it.value}
-                    </Text>
+                    </span>
                     {it.warn && (
-                      <Badge
-                        count="异常"
-                        style={{
-                          backgroundColor: '#fff1f0', color: '#f5222d',
-                          border: '1px solid #ffa39e', fontSize: 11, fontWeight: 500,
-                        }}
-                      />
+                      <Tag color="red" style={{ fontSize: 11, fontWeight: 500, borderRadius: 4 }}>
+                        异常
+                      </Tag>
                     )}
                   </div>
                 </Descriptions.Item>
@@ -387,37 +394,37 @@ function GraphPanel({ graph }: { graph: any }) {
   }, [graph]);
 
   const colorByType: Record<string, string> = {
-    company: '#1677ff',
-    controller: '#722ed1',
-    auditor: '#13c2c2',
+    company: '#3b82f6',
+    controller: '#8b5cf6',
+    auditor: '#06b6d4',
   };
   const relColor: Record<string, string> = {
-    same_controller: '#722ed1',
-    related_transaction: '#fa8c16',
-    supplier: '#52c41a',
-    customer: '#52c41a',
-    same_auditor: '#13c2c2',
-    subsidiary: '#1677ff',
+    same_controller: '#8b5cf6',
+    related_transaction: '#f59e0b',
+    supplier: '#10b981',
+    customer: '#10b981',
+    same_auditor: '#06b6d4',
+    subsidiary: '#3b82f6',
   };
 
   const legendItems = [
-    { color: '#1677ff', label: '公司' },
-    { color: '#722ed1', label: '实控人' },
-    { color: '#13c2c2', label: '审计机构' },
-    { color: '#f5222d', label: '已被问询' },
+    { color: '#3b82f6', label: '公司' },
+    { color: '#8b5cf6', label: '实控人' },
+    { color: '#06b6d4', label: '审计机构' },
+    { color: '#ef4444', label: '已被问询' },
   ];
 
   return (
     <Row gutter={[16, 16]}>
       <Col xs={24} lg={16}>
         <Card
-          title={<Space><DotChartOutlined style={{ color: '#1677ff' }} />一度关联网络（Egonet）</Space>}
+          title={<Space><DotChartOutlined style={{ color: 'var(--accent)' }} />一度关联网络（Egonet）</Space>}
           bodyStyle={{ padding: 16 }}
         >
           <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="graph-svg">
             <defs>
               <filter id="shadow">
-                <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.15" />
+                <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.25" />
               </filter>
             </defs>
             {links.map((l: any, i: number) => {
@@ -427,7 +434,7 @@ function GraphPanel({ graph }: { graph: any }) {
               return (
                 <line
                   key={i} x1={s.x} y1={s.y} x2={t.x} y2={t.y}
-                  stroke={relColor[l.relation] || '#d9d9d9'}
+                  stroke={relColor[l.relation] || 'rgba(148,163,184,0.15)'}
                   strokeOpacity={0.5}
                   strokeWidth={1 + (l.weight || 0.3) * 1.5}
                   strokeDasharray={l.relation === 'same_auditor' ? '4,3' : undefined}
@@ -440,13 +447,13 @@ function GraphPanel({ graph }: { graph: any }) {
               const isInq = n.is_inquired;
               const isTarget = n.is_target;
               const r = isTarget ? 24 : (n.category === 'company' ? 15 : 11);
-              const fill = isInq ? '#f5222d' : colorByType[n.category] || '#999';
+              const fill = isInq ? '#ef4444' : colorByType[n.category] || '#64748b';
               return (
                 <g key={n.id} className="graph-node" transform={`translate(${p.x},${p.y})`}>
                   {isTarget && <circle r={r + 4} fill="none" stroke={fill} strokeWidth={2} strokeOpacity={0.2} />}
                   <circle
                     r={r} fill={fill}
-                    stroke="#fff" strokeWidth={2}
+                    stroke="rgba(10,15,30,0.6)" strokeWidth={2}
                     filter="url(#shadow)"
                   />
                   {isTarget && (
@@ -454,7 +461,7 @@ function GraphPanel({ graph }: { graph: any }) {
                       Target
                     </text>
                   )}
-                  <text textAnchor="middle" dy={-r - 6} fontSize={11} fill="#595959" fontWeight={500}>
+                  <text textAnchor="middle" dy={-r - 6} fontSize={11} fill="#94a3b8" fontWeight={500}>
                     {n.name?.slice(0, 8)}
                   </text>
                 </g>
@@ -468,7 +475,7 @@ function GraphPanel({ graph }: { graph: any }) {
                   display: 'inline-block', width: 10, height: 10,
                   background: item.color, borderRadius: '50%',
                 }} />
-                <Text type="secondary" style={{ fontSize: 12 }}>{item.label}</Text>
+                <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{item.label}</span>
               </Space>
             ))}
           </div>
@@ -476,15 +483,15 @@ function GraphPanel({ graph }: { graph: any }) {
       </Col>
       <Col xs={24} lg={8}>
         <Card
-          title={<Space><FundOutlined style={{ color: '#fa8c16' }} />图谱风险指标</Space>}
+          title={<Space><FundOutlined style={{ color: '#f59e0b' }} />图谱风险指标</Space>}
           size="small"
         >
           <Descriptions column={1} size="small" bordered>
             <Descriptions.Item label="PageRank">
-              <Text strong>{(metrics.pagerank ?? 0).toFixed(4)}</Text>
+              <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{(metrics.pagerank ?? 0).toFixed(4)}</span>
             </Descriptions.Item>
             <Descriptions.Item label="度中心性">
-              <Text strong>{(metrics.degree_centrality ?? 0).toFixed(4)}</Text>
+              <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{(metrics.degree_centrality ?? 0).toFixed(4)}</span>
             </Descriptions.Item>
             <Descriptions.Item label="一度被问询邻居">
               <Tag color="red">{metrics.related_inquired_count_1deg ?? 0}</Tag>
@@ -493,16 +500,16 @@ function GraphPanel({ graph }: { graph: any }) {
               <Tag color="orange">{metrics.related_inquired_count_2deg ?? 0}</Tag>
             </Descriptions.Item>
             <Descriptions.Item label="同实控人被问询比">
-              <Text strong>{((metrics.same_controller_inquired_ratio ?? 0) * 100).toFixed(1)}%</Text>
+              <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{((metrics.same_controller_inquired_ratio ?? 0) * 100).toFixed(1)}%</span>
             </Descriptions.Item>
             <Descriptions.Item label="供应商平均风险">
-              <Text strong>{(metrics.supplier_avg_risk ?? 0).toFixed(3)}</Text>
+              <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{(metrics.supplier_avg_risk ?? 0).toFixed(3)}</span>
             </Descriptions.Item>
             <Descriptions.Item label="客户平均风险">
-              <Text strong>{(metrics.customer_avg_risk ?? 0).toFixed(3)}</Text>
+              <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{(metrics.customer_avg_risk ?? 0).toFixed(3)}</span>
             </Descriptions.Item>
             <Descriptions.Item label="同审计机构被问询比">
-              <Text strong>{((metrics.same_auditor_inquired_ratio ?? 0) * 100).toFixed(1)}%</Text>
+              <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{((metrics.same_auditor_inquired_ratio ?? 0) * 100).toFixed(1)}%</span>
             </Descriptions.Item>
           </Descriptions>
         </Card>
@@ -517,12 +524,13 @@ function SimilarCasesPanel({ cases }: { cases: any[] }) {
       title: '排名', key: 'rank', width: 60,
       render: (_: any, __: any, i: number) => (
         <Badge count={i + 1} style={{
-          backgroundColor: i < 3 ? '#1677ff' : '#d9d9d9',
+          backgroundColor: i < 3 ? '#3b82f6' : 'rgba(148,163,184,0.15)',
+          color: i < 3 ? '#fff' : 'var(--text-2)',
           fontWeight: 600,
         }} />
       ),
     },
-    { title: '公司代码', dataIndex: 'company_code', width: 100, render: (v: string) => <Text strong>{v}</Text> },
+    { title: '公司代码', dataIndex: 'company_code', width: 100, render: (v: string) => <span style={{ fontWeight: 600, color: 'var(--accent)' }}>{v}</span> },
     { title: '公司名称', dataIndex: 'company_name', width: 120 },
     { title: '问询日期', dataIndex: 'inquiry_date', width: 110 },
     {
@@ -533,14 +541,15 @@ function SimilarCasesPanel({ cases }: { cases: any[] }) {
       title: '相似度', dataIndex: 'similarity', width: 120,
       render: (v: number) => {
         const pct = Math.round(v * 100);
-        const color = v >= 0.8 ? '#f5222d' : v >= 0.7 ? '#fa8c16' : '#1677ff';
+        const color = v >= 0.8 ? '#f87171' : v >= 0.7 ? '#fbbf24' : '#60a5fa';
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Progress
               percent={pct} size="small" strokeColor={color}
+              trailColor="rgba(148,163,184,0.08)"
               style={{ width: 60, margin: 0 }} showInfo={false}
             />
-            <Text strong style={{ color, fontVariantNumeric: 'tabular-nums' }}>{pct}%</Text>
+            <span className="text-mono" style={{ fontWeight: 600, color, fontSize: 13 }}>{pct}%</span>
           </div>
         );
       },
@@ -554,26 +563,26 @@ function SimilarCasesPanel({ cases }: { cases: any[] }) {
 
 function AgentTracePanel({ trace, stats }: { trace: any[]; stats: { time: number; calls: number; tokens: number } }) {
   const agentIcons: Record<string, any> = {
-    'planner': <ApartmentOutlined style={{ color: '#1677ff' }} />,
-    'Master Planner': <ApartmentOutlined style={{ color: '#1677ff' }} />,
-    'financial_agent': <FundOutlined style={{ color: '#fa8c16' }} />,
-    '财务异常检测Agent': <FundOutlined style={{ color: '#fa8c16' }} />,
-    'announcement_agent': <FileTextOutlined style={{ color: '#52c41a' }} />,
-    '公告研读Agent': <FileTextOutlined style={{ color: '#52c41a' }} />,
-    'graph_agent': <DotChartOutlined style={{ color: '#722ed1' }} />,
-    'predictor': <ThunderboltOutlined style={{ color: '#f5222d' }} />,
-    '概率预测模型': <ThunderboltOutlined style={{ color: '#f5222d' }} />,
-    'case_agent': <FileTextOutlined style={{ color: '#722ed1' }} />,
-    'replan': <ApartmentOutlined style={{ color: '#1677ff' }} />,
-    'attribution_agent': <CheckCircleOutlined style={{ color: '#13c2c2' }} />,
+    'planner': <ApartmentOutlined style={{ color: '#3b82f6' }} />,
+    'Master Planner': <ApartmentOutlined style={{ color: '#3b82f6' }} />,
+    'financial_agent': <FundOutlined style={{ color: '#f59e0b' }} />,
+    '财务异常检测Agent': <FundOutlined style={{ color: '#f59e0b' }} />,
+    'announcement_agent': <FileTextOutlined style={{ color: '#10b981' }} />,
+    '公告研读Agent': <FileTextOutlined style={{ color: '#10b981' }} />,
+    'graph_agent': <DotChartOutlined style={{ color: '#8b5cf6' }} />,
+    'predictor': <ThunderboltOutlined style={{ color: '#ef4444' }} />,
+    '概率预测模型': <ThunderboltOutlined style={{ color: '#ef4444' }} />,
+    'case_agent': <FileTextOutlined style={{ color: '#8b5cf6' }} />,
+    'replan': <ApartmentOutlined style={{ color: '#3b82f6' }} />,
+    'attribution_agent': <CheckCircleOutlined style={{ color: '#06b6d4' }} />,
   };
 
   const agentColors: Record<string, string> = {
-    'planner': '#1677ff', 'Master Planner': '#1677ff',
-    'financial_agent': '#fa8c16', '财务异常检测Agent': '#fa8c16',
-    'announcement_agent': '#52c41a', '公告研读Agent': '#52c41a',
-    'graph_agent': '#722ed1', 'predictor': '#f5222d', '概率预测模型': '#f5222d',
-    'case_agent': '#722ed1', 'replan': '#1677ff', 'attribution_agent': '#13c2c2',
+    'planner': '#3b82f6', 'Master Planner': '#3b82f6',
+    'financial_agent': '#f59e0b', '财务异常检测Agent': '#f59e0b',
+    'announcement_agent': '#10b981', '公告研读Agent': '#10b981',
+    'graph_agent': '#8b5cf6', 'predictor': '#ef4444', '概率预测模型': '#ef4444',
+    'case_agent': '#8b5cf6', 'replan': '#3b82f6', 'attribution_agent': '#06b6d4',
   };
 
   return (
@@ -581,32 +590,35 @@ function AgentTracePanel({ trace, stats }: { trace: any[]; stats: { time: number
       <Row gutter={[16, 16]} className="stat-row" style={{ marginBottom: 20 }}>
         <Col xs={24} sm={8}>
           <Card size="small" className="stat-card stat-blue" bodyStyle={{ padding: '16px 20px' }}>
+            <span className="stat-icon-bg"><ClockCircleOutlined /></span>
             <Statistic
-              title={<Text type="secondary" style={{ fontSize: 12 }}>总耗时</Text>}
+              title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>总耗时</span>}
               value={stats.time}
               suffix="ms"
               prefix={<ClockCircleOutlined />}
-              valueStyle={{ fontSize: 22 }}
+              valueStyle={{ fontSize: 22, color: '#60a5fa' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={8}>
           <Card size="small" className="stat-card stat-purple" bodyStyle={{ padding: '16px 20px' }}>
+            <span className="stat-icon-bg"><ThunderboltOutlined /></span>
             <Statistic
-              title={<Text type="secondary" style={{ fontSize: 12 }}>LLM 调用次数</Text>}
+              title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>LLM 调用次数</span>}
               value={stats.calls}
               prefix={<ThunderboltOutlined />}
-              valueStyle={{ fontSize: 22 }}
+              valueStyle={{ fontSize: 22, color: '#a78bfa' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={8}>
           <Card size="small" className="stat-card stat-cyan" bodyStyle={{ padding: '16px 20px' }}>
+            <span className="stat-icon-bg"><NodeIndexOutlined /></span>
             <Statistic
-              title={<Text type="secondary" style={{ fontSize: 12 }}>总 Token 数</Text>}
+              title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>总 Token 数</span>}
               value={stats.tokens}
               prefix={<NodeIndexOutlined />}
-              valueStyle={{ fontSize: 22 }}
+              valueStyle={{ fontSize: 22, color: '#22d3ee' }}
             />
           </Card>
         </Col>
@@ -615,34 +627,34 @@ function AgentTracePanel({ trace, stats }: { trace: any[]; stats: { time: number
       <Timeline
         className="trace-timeline"
         items={trace.map((step: any) => ({
-          color: agentColors[step.agent_name] || '#1677ff',
+          color: agentColors[step.agent_name] || '#3b82f6',
           dot: agentIcons[step.agent_name] || <ClockCircleOutlined />,
           children: (
             <Card
               size="small"
               className="trace-card"
-              style={{ borderLeftColor: agentColors[step.agent_name] || '#1677ff' }}
+              style={{ borderLeftColor: agentColors[step.agent_name] || '#3b82f6' }}
               bodyStyle={{ padding: '12px 16px' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <Space size={8}>
                   <Tag color="blue" style={{ borderRadius: 4, fontWeight: 600 }}>{step.agent_name}</Tag>
-                  <Text strong style={{ fontSize: 13 }}>{step.action}</Text>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>{step.action}</span>
                 </Space>
                 <Space size={12}>
-                  <Text type="secondary" style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+                  <span className="text-mono" style={{ fontSize: 12, color: 'var(--text-3)' }}>
                     <ClockCircleOutlined style={{ marginRight: 3 }} />{step.duration_ms}ms
-                  </Text>
+                  </span>
                   {step.tokens_used > 0 && (
-                    <Text type="secondary" style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>
+                    <span className="text-mono" style={{ fontSize: 12, color: 'var(--text-3)' }}>
                       <ThunderboltOutlined style={{ marginRight: 3 }} />{step.tokens_used} tokens
-                    </Text>
+                    </span>
                   )}
                 </Space>
               </div>
-              <div style={{ fontSize: 13, color: '#595959' }}>
-                <div style={{ marginBottom: 2 }}><Text type="secondary">输入：</Text>{step.input_summary}</div>
-                <div><Text type="secondary">输出：</Text>{step.output_summary}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-2)' }}>
+                <div style={{ marginBottom: 2 }}><span style={{ color: 'var(--text-3)' }}>输入：</span>{step.input_summary}</div>
+                <div><span style={{ color: 'var(--text-3)' }}>输出：</span>{step.output_summary}</div>
               </div>
               {step.skills_called?.length > 0 && (
                 <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>

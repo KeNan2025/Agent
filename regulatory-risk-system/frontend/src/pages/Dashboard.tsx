@@ -1,27 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Card, Table, Tag, Select, Row, Col, Statistic, Progress, Input, Space, Typography, Badge,
+  Card, Table, Select, Row, Col, Statistic, Progress, Input, Space, Tag,
 } from 'antd';
 import {
   WarningOutlined, SafetyOutlined, ExclamationCircleOutlined,
   ArrowUpOutlined, FundOutlined, RightOutlined,
 } from '@ant-design/icons';
 import { getRanking, getIndustries } from '../api/client';
-
-const { Text } = Typography;
-
-const riskColor: Record<string, string> = {
-  '高风险': 'red',
-  '中风险': 'orange',
-  '低风险': 'green',
-};
-
-const riskHexColor: Record<string, string> = {
-  '高风险': '#f5222d',
-  '中风险': '#fa8c16',
-  '低风险': '#52c41a',
-};
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -62,35 +48,25 @@ export default function Dashboard() {
       title: '排名', dataIndex: 'rank', key: 'rank', width: 70,
       render: (v: number) => {
         if (v <= 3) {
-          const colors = ['#f5222d', '#fa8c16', '#faad14'];
-          return (
-            <div style={{
-              width: 26, height: 26, borderRadius: '50%',
-              background: colors[v - 1], color: '#fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontWeight: 700, fontSize: 13,
-            }}>
-              {v}
-            </div>
-          );
+          return <span className={`rank-medal rank-medal--${v}`}>{v}</span>;
         }
-        return <Text type="secondary">{v}</Text>;
+        return <span className="rank-text">{v}</span>;
       },
     },
     {
       title: '股票代码', key: 'code', width: 100,
       render: (_: any, r: any) => (
-        <Text strong style={{ color: '#1677ff', cursor: 'pointer' }}
-              onClick={() => navigate(`/company/${r.company.code}`)}>
+        <span className="code-link"
+              onClick={(e) => { e.stopPropagation(); navigate(`/company/${r.company.code}`); }}>
           {r.company.code}
-        </Text>
+        </span>
       ),
     },
     {
       title: '公司名称', key: 'name', width: 150,
       render: (_: any, r: any) => (
-        <a onClick={() => navigate(`/company/${r.company.code}`)}
-           style={{ fontWeight: 500 }}>
+        <a className="name-link"
+           onClick={(e) => { e.stopPropagation(); navigate(`/company/${r.company.code}`); }}>
           {r.company.name}
         </a>
       ),
@@ -98,15 +74,15 @@ export default function Dashboard() {
     {
       title: '行业', key: 'industry', width: 110,
       render: (_: any, r: any) => (
-        <Tag style={{ borderRadius: 4 }}>{r.company.industry}</Tag>
+        <span className="industry-tag">{r.company.industry}</span>
       ),
     },
     {
       title: '市值(亿)', key: 'cap', width: 100,
       render: (_: any, r: any) => (
-        <Text style={{ fontVariantNumeric: 'tabular-nums' }}>
+        <span className="num-cell">
           {r.company.market_cap.toFixed(1)}
-        </Text>
+        </span>
       ),
       sorter: (a: any, b: any) => a.company.market_cap - b.company.market_cap,
     },
@@ -115,23 +91,20 @@ export default function Dashboard() {
       sorter: (a: any, b: any) => a.inquiry_probability - b.inquiry_probability,
       render: (v: number) => {
         const pct = Math.round(v * 100);
-        const color = v >= 0.6 ? '#f5222d' : v >= 0.3 ? '#fa8c16' : '#52c41a';
+        const strokeColor = v >= 0.6 ? '#ef4444' : v >= 0.3 ? '#f59e0b' : '#10b981';
         return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{
-                height: 8, borderRadius: 4, background: '#f0f0f0', overflow: 'hidden',
-              }}>
-                <div style={{
-                  height: '100%', width: `${pct}%`, borderRadius: 4,
-                  background: `linear-gradient(90deg, ${color}88, ${color})`,
-                  transition: 'width 0.6s ease',
-                }} />
-              </div>
-            </div>
-            <Text strong style={{ color, minWidth: 40, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+          <div className="prob-cell">
+            <Progress
+              percent={pct}
+              size="small"
+              strokeColor={strokeColor}
+              trailColor="rgba(148,163,184,0.08)"
+              showInfo={false}
+              className="prob-progress"
+            />
+            <span className="prob-value" style={{ color: strokeColor }}>
               {pct}%
-            </Text>
+            </span>
           </div>
         );
       },
@@ -144,26 +117,22 @@ export default function Dashboard() {
         { text: '低风险', value: '低风险' },
       ],
       onFilter: (v: any, r: any) => r.risk_level === v,
-      render: (v: string) => (
-        <Badge
-          color={riskHexColor[v]}
-          text={<Text style={{ color: riskHexColor[v], fontWeight: 600, fontSize: 13 }}>{v}</Text>}
-        />
-      ),
+      render: (v: string) => {
+        const level = v === '高风险' ? 'high' : v === '中风险' ? 'medium' : 'low';
+        return <span className={`risk-badge risk-badge--${level}`}>{v}</span>;
+      },
     },
     {
       title: '主要风险', dataIndex: 'top_risk_factor', key: 'risk', width: 150,
       render: (v: string) => (
-        <Text ellipsis={{ tooltip: v }} style={{ fontSize: 13, maxWidth: 140 }}>
-          {v}
-        </Text>
+        <span className="risk-factor-text" title={v}>{v}</span>
       ),
     },
     {
       title: '操作', key: 'action', width: 80, fixed: 'right' as const,
       render: (_: any, r: any) => (
-        <a onClick={() => navigate(`/company/${r.company.code}`)}
-           style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <a className="action-link"
+           onClick={(e) => { e.stopPropagation(); navigate(`/company/${r.company.code}`); }}>
           详情 <RightOutlined style={{ fontSize: 10 }} />
         </a>
       ),
@@ -171,63 +140,67 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="fade-in">
-      <div className="page-title">
-        <span className="title-bar" />
-        全市场风险监控
-      </div>
-
-      <Row gutter={[16, 16]} className="stat-row" style={{ marginBottom: 20 }}>
+    <div className="page-container fade-in">
+      <Row gutter={[16, 16]} className="stat-row">
         <Col xs={12} sm={12} lg={6}>
-          <Card className="stat-card stat-blue" bodyStyle={{ padding: '20px 24px' }}>
-            <SafetyOutlined className="stat-icon" />
+          <Card className="stat-card stat-blue">
+            <span className="stat-icon-bg">
+              <SafetyOutlined />
+            </span>
             <Statistic
-              title={<Text type="secondary" style={{ fontSize: 13 }}>监控公司总数</Text>}
+              title={<span className="stat-label">监控公司总数</span>}
               value={data.total}
-              valueStyle={{ fontSize: 28, fontWeight: 700, color: '#1677ff' }}
+              valueStyle={{ fontSize: 28, fontWeight: 700, color: '#60a5fa' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={12} lg={6}>
-          <Card className="stat-card stat-red" bodyStyle={{ padding: '20px 24px' }}>
-            <WarningOutlined className="stat-icon" />
+          <Card className="stat-card stat-red">
+            <span className="stat-icon-bg">
+              <WarningOutlined />
+            </span>
             <Statistic
-              title={<Text type="secondary" style={{ fontSize: 13 }}>高风险公司</Text>}
+              title={<span className="stat-label">高风险公司</span>}
               value={highCount}
-              valueStyle={{ fontSize: 28, fontWeight: 700, color: '#f5222d' }}
+              valueStyle={{ fontSize: 28, fontWeight: 700, color: '#f87171' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={12} lg={6}>
-          <Card className="stat-card stat-orange" bodyStyle={{ padding: '20px 24px' }}>
-            <ExclamationCircleOutlined className="stat-icon" />
+          <Card className="stat-card stat-orange">
+            <span className="stat-icon-bg">
+              <ExclamationCircleOutlined />
+            </span>
             <Statistic
-              title={<Text type="secondary" style={{ fontSize: 13 }}>中风险公司</Text>}
+              title={<span className="stat-label">中风险公司</span>}
               value={medCount}
-              valueStyle={{ fontSize: 28, fontWeight: 700, color: '#fa8c16' }}
+              valueStyle={{ fontSize: 28, fontWeight: 700, color: '#fbbf24' }}
             />
           </Card>
         </Col>
         <Col xs={12} sm={12} lg={6}>
-          <Card className="stat-card stat-green" bodyStyle={{ padding: '20px 24px' }}>
-            <ArrowUpOutlined className="stat-icon" />
+          <Card className="stat-card stat-green">
+            <span className="stat-icon-bg">
+              <ArrowUpOutlined />
+            </span>
             <Statistic
-              title={<Text type="secondary" style={{ fontSize: 13 }}>平均问询概率</Text>}
+              title={<span className="stat-label">平均问询概率</span>}
               value={(avgProb * 100).toFixed(1)}
               suffix="%"
-              valueStyle={{ fontSize: 28, fontWeight: 700, color: '#52c41a' }}
+              valueStyle={{ fontSize: 28, fontWeight: 700, color: '#34d399' }}
             />
           </Card>
         </Col>
       </Row>
 
       <Card
+        className="table-card"
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FundOutlined style={{ color: '#1677ff' }} />
-            <span style={{ fontWeight: 600 }}>风险排行榜</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="title-accent-bar" />
+            <span className="table-card-title">全市场风险排行榜</span>
             <Tag color="blue" style={{ marginLeft: 4 }}>{windowDays}天窗口</Tag>
-          </div>
+          </span>
         }
         extra={
           <Space size="middle">
@@ -263,7 +236,7 @@ export default function Dashboard() {
           dataSource={filteredItems}
           rowKey={(r: any) => r.company.code}
           loading={loading}
-          size="middle"
+          size="small"
           pagination={{
             pageSize: 20,
             showSizeChanger: true,
