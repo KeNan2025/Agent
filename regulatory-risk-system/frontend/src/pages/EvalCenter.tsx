@@ -64,7 +64,7 @@ export default function EvalCenter() {
               >
                 <Alert
                   type="info" showIcon style={{ marginBottom: 20, borderRadius: 8 }}
-                  message="每次运行使用合成训练集做 5-fold 交叉验证；首次约 30 秒，后续秒级"
+                  message="基于 5-fold 交叉验证评估模型消融实验效果"
                 />
                 <Spin spinning={ablLoading}>
                   {ablation ? (
@@ -184,7 +184,7 @@ export default function EvalCenter() {
                             <Statistic
                               title={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>完整模型 AUC-ROC</span>}
                               value={baseline.full_model.auc_roc.toFixed(3)}
-                              valueStyle={{ color: '#3b82f6', fontWeight: 700, fontSize: 22 }}
+                              valueStyle={{ color: '#4f8ff7', fontWeight: 700, fontSize: 22 }}
                             />
                           </Col>
                           <Col xs={8}>
@@ -281,7 +281,7 @@ export default function EvalCenter() {
                           <Col xs={8} sm={4} key={k}>
                             <Card size="small" className="stat-card stat-blue" bodyStyle={{ padding: '12px 16px', textAlign: 'center' }}>
                               <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{k}</span>
-                              <div style={{ fontSize: 22, fontWeight: 700, color: '#3b82f6', fontVariantNumeric: 'tabular-nums' }}>{v}</div>
+                              <div style={{ fontSize: 22, fontWeight: 700, color: '#4f8ff7', fontVariantNumeric: 'tabular-nums' }}>{v}</div>
                             </Card>
                           </Col>
                         ))}

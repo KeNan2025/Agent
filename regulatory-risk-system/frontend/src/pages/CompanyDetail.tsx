@@ -168,7 +168,7 @@ export default function CompanyDetail() {
             bodyStyle={{ padding: '12px 24px' }}
           >
             {data.shap_features.map((f: any, i: number) => {
-              const barColor = f.shap_value > 0.05 ? '#ef4444' : f.shap_value > 0.02 ? '#f59e0b' : '#3b82f6';
+              const barColor = f.shap_value > 0.05 ? '#ef4444' : f.shap_value > 0.02 ? '#f59e0b' : '#4f8ff7';
               const barWidth = Math.max(4, Math.round((f.shap_value / prob) * 100));
               return (
                 <div key={i} className="shap-row">
@@ -294,7 +294,7 @@ function FinancialPanel({ financial }: { financial: any }) {
   if (!financial) return <Empty description="财务数据不可用" />;
   const groups = [
     {
-      title: '盈利能力', icon: <RiseOutlined style={{ color: '#3b82f6' }} />,
+      title: '盈利能力', icon: <RiseOutlined style={{ color: '#4f8ff7' }} />,
       items: [
         { label: 'ROE', value: `${financial.roe}%`, warn: financial.roe < 5 },
         { label: 'ROA', value: `${financial.roa}%`, warn: financial.roa < 3 },
@@ -394,7 +394,7 @@ function GraphPanel({ graph }: { graph: any }) {
   }, [graph]);
 
   const colorByType: Record<string, string> = {
-    company: '#3b82f6',
+    company: '#4f8ff7',
     controller: '#8b5cf6',
     auditor: '#06b6d4',
   };
@@ -404,11 +404,11 @@ function GraphPanel({ graph }: { graph: any }) {
     supplier: '#10b981',
     customer: '#10b981',
     same_auditor: '#06b6d4',
-    subsidiary: '#3b82f6',
+    subsidiary: '#4f8ff7',
   };
 
   const legendItems = [
-    { color: '#3b82f6', label: '公司' },
+    { color: '#4f8ff7', label: '公司' },
     { color: '#8b5cf6', label: '实控人' },
     { color: '#06b6d4', label: '审计机构' },
     { color: '#ef4444', label: '已被问询' },
@@ -524,7 +524,7 @@ function SimilarCasesPanel({ cases }: { cases: any[] }) {
       title: '排名', key: 'rank', width: 60,
       render: (_: any, __: any, i: number) => (
         <Badge count={i + 1} style={{
-          backgroundColor: i < 3 ? '#3b82f6' : 'rgba(148,163,184,0.15)',
+          backgroundColor: i < 3 ? '#4f8ff7' : 'rgba(148,163,184,0.15)',
           color: i < 3 ? '#fff' : 'var(--text-2)',
           fontWeight: 600,
         }} />
@@ -563,8 +563,8 @@ function SimilarCasesPanel({ cases }: { cases: any[] }) {
 
 function AgentTracePanel({ trace, stats }: { trace: any[]; stats: { time: number; calls: number; tokens: number } }) {
   const agentIcons: Record<string, any> = {
-    'planner': <ApartmentOutlined style={{ color: '#3b82f6' }} />,
-    'Master Planner': <ApartmentOutlined style={{ color: '#3b82f6' }} />,
+    'planner': <ApartmentOutlined style={{ color: '#4f8ff7' }} />,
+    'Master Planner': <ApartmentOutlined style={{ color: '#4f8ff7' }} />,
     'financial_agent': <FundOutlined style={{ color: '#f59e0b' }} />,
     '财务异常检测Agent': <FundOutlined style={{ color: '#f59e0b' }} />,
     'announcement_agent': <FileTextOutlined style={{ color: '#10b981' }} />,
@@ -573,16 +573,16 @@ function AgentTracePanel({ trace, stats }: { trace: any[]; stats: { time: number
     'predictor': <ThunderboltOutlined style={{ color: '#ef4444' }} />,
     '概率预测模型': <ThunderboltOutlined style={{ color: '#ef4444' }} />,
     'case_agent': <FileTextOutlined style={{ color: '#8b5cf6' }} />,
-    'replan': <ApartmentOutlined style={{ color: '#3b82f6' }} />,
+    'replan': <ApartmentOutlined style={{ color: '#4f8ff7' }} />,
     'attribution_agent': <CheckCircleOutlined style={{ color: '#06b6d4' }} />,
   };
 
   const agentColors: Record<string, string> = {
-    'planner': '#3b82f6', 'Master Planner': '#3b82f6',
+    'planner': '#4f8ff7', 'Master Planner': '#4f8ff7',
     'financial_agent': '#f59e0b', '财务异常检测Agent': '#f59e0b',
     'announcement_agent': '#10b981', '公告研读Agent': '#10b981',
     'graph_agent': '#8b5cf6', 'predictor': '#ef4444', '概率预测模型': '#ef4444',
-    'case_agent': '#8b5cf6', 'replan': '#3b82f6', 'attribution_agent': '#06b6d4',
+    'case_agent': '#8b5cf6', 'replan': '#4f8ff7', 'attribution_agent': '#06b6d4',
   };
 
   return (
@@ -627,13 +627,13 @@ function AgentTracePanel({ trace, stats }: { trace: any[]; stats: { time: number
       <Timeline
         className="trace-timeline"
         items={trace.map((step: any) => ({
-          color: agentColors[step.agent_name] || '#3b82f6',
+          color: agentColors[step.agent_name] || '#4f8ff7',
           dot: agentIcons[step.agent_name] || <ClockCircleOutlined />,
           children: (
             <Card
               size="small"
               className="trace-card"
-              style={{ borderLeftColor: agentColors[step.agent_name] || '#3b82f6' }}
+              style={{ borderLeftColor: agentColors[step.agent_name] || '#4f8ff7' }}
               bodyStyle={{ padding: '12px 16px' }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>

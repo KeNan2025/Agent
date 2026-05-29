@@ -46,7 +46,7 @@ export default function History() {
     {
       title: '公司代码', dataIndex: 'company_code', width: 110,
       render: (v: string) => (
-        <span style={{ fontWeight: 600, color: '#3b82f6', cursor: 'pointer' }}
+        <span style={{ fontWeight: 600, color: '#4f8ff7', cursor: 'pointer' }}
               onClick={() => navigate(`/company/${v}`)}>
           {v}
         </span>
@@ -114,7 +114,7 @@ export default function History() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>历史扫雷次数</span>}
                 value={scans.length}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#3b82f6' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#4f8ff7' }}
               />
             </Card>
           </Col>
@@ -145,7 +145,7 @@ export default function History() {
           <Col span={trace ? 14 : 24} style={{ transition: 'all 0.3s ease' }}>
             <Card
               title={
-                <Space><HistoryOutlined style={{ color: '#3b82f6' }} /><span style={{ fontWeight: 600 }}>持久化扫雷历史</span></Space>
+                <Space><HistoryOutlined style={{ color: '#4f8ff7' }} /><span style={{ fontWeight: 600 }}>持久化扫雷历史</span></Space>
               }
             >
               <Table
@@ -159,7 +159,7 @@ export default function History() {
             <Col span={10} className="slide-in-left">
               <Card
                 title={
-                  <Space><FileTextOutlined style={{ color: '#3b82f6' }} />Trace 详情</Space>
+                  <Space><FileTextOutlined style={{ color: '#4f8ff7' }} />Trace 详情</Space>
                 }
                 extra={
                   <Button type="text" icon={<CloseOutlined />} onClick={() => setTrace(null)} />

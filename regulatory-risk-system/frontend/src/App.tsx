@@ -7,7 +7,6 @@ import {
   ApiOutlined,
   HistoryOutlined,
   ThunderboltOutlined,
-  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
@@ -29,15 +28,6 @@ const menuItems = [
   { key: '/history', icon: <HistoryOutlined />, label: '扫雷历史' },
 ];
 
-const pageTitles: Record<string, string> = {
-  '/': '风险排行榜',
-  '/scan': '批量扫雷',
-  '/ml': '模型指标',
-  '/eval': '评估中心',
-  '/mcp': 'MCP 工具',
-  '/history': '扫雷历史',
-};
-
 function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,16 +38,13 @@ function AppLayout() {
       ? '/'
       : '/' + location.pathname.split('/')[1];
 
-  const currentTitle = location.pathname.startsWith('/company')
-    ? '公司详情'
-    : pageTitles[selected] || '';
-
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
         theme="dark"
-        width={220}
-        className="app-sider bg-sider-gradient"
+        width={200}
+        className="app-sider"
+        style={{ position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 20, overflow: 'auto' }}
       >
         <div className="sidebar-logo">
           <span className="logo-icon"><ThunderboltOutlined /></span>
@@ -69,17 +56,17 @@ function AppLayout() {
           selectedKeys={[selected]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
-          style={{ background: 'transparent', borderRight: 'none' }}
+          style={{ background: 'transparent', borderRight: 'none', marginTop: 6 }}
         />
         <div className="sider-footer">
-          <span className="sider-footer-brand">Agentic AI Platform</span>
-          <br />
-          <span className="sider-footer-version">v1.0.0</span>
+          <span style={{ opacity: .5, fontSize: 11 }}>Agentic AI Platform · v2.0</span>
         </div>
       </Sider>
-      <Layout style={{ marginLeft: 220 }}>
+      <Layout style={{ marginLeft: 200 }}>
         <Header className="app-header">
-          <span className="header-title">上市公司监管问询概率预测与扫雷预警系统</span>
+          <span className="header-title">
+            上市公司监管问询概率预测与扫雷预警系统
+          </span>
           <div className="header-right">
             <span className="header-badge">
               <span className="dot" />

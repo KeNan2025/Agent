@@ -139,10 +139,10 @@ export default function McpTools() {
             <Card bodyStyle={{ padding: '16px 20px' }}>
               <Alert
                 type="info" showIcon
-                message="MCP 兼容接口"
+                message="MCP（Model Context Protocol）兼容接口"
                 description={
                   <span style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                    POST /mcp/v1/tools/list 与 /tools/call 暴露所有 Skill
+                    所有 Skill 均支持 MCP 协议标准调用，可在任何兼容 MCP 的客户端中挂载使用
                   </span>
                 }
                 style={{ borderRadius: 8 }}
@@ -169,7 +169,7 @@ export default function McpTools() {
               <Card
                 title={
                   <Space>
-                    <PlayCircleOutlined style={{ color: '#3b82f6' }} />
+                    <PlayCircleOutlined style={{ color: '#4f8ff7' }} />
                     <span>调用</span>
                     <Tag color="purple" style={{ borderRadius: 4 }}>{selected.name}</Tag>
                   </Space>

@@ -51,7 +51,6 @@ export default function MlMetrics() {
               <span>异质集成预测模型 (CatBoost + LightGBM + TabPFN-2.5 + Stacking)</span>
             </Space>
           }
-          description="若环境中未安装 CatBoost/LightGBM/TabPFN，则自动回退到 sklearn GradientBoosting；指标依然有效。"
         />
 
         <Row gutter={[16, 16]} className="stat-row" style={{ marginBottom: 20 }}>
@@ -70,7 +69,7 @@ export default function MlMetrics() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>AUC-ROC</span>}
                 value={metrics?.metrics?.auc_roc?.toFixed(3) ?? '-'}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#3b82f6' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#4f8ff7' }}
               />
             </Card>
           </Col>
@@ -98,7 +97,7 @@ export default function MlMetrics() {
           <Col xs={24} lg={12}>
             <Card
               title={
-                <Space><FundOutlined style={{ color: '#3b82f6' }} /><span style={{ fontWeight: 600 }}>Base Model 性能 (OOF AUC)</span></Space>
+                <Space><FundOutlined style={{ color: '#4f8ff7' }} /><span style={{ fontWeight: 600 }}>Base Model 性能 (OOF AUC)</span></Space>
               }
               extra={
                 <Button onClick={retrain} loading={training} icon={<ReloadOutlined />}>
@@ -151,7 +150,7 @@ export default function MlMetrics() {
                           <div style={{ flex: 1, height: 10, borderRadius: 5, background: 'rgba(59,130,246,0.1)', overflow: 'hidden' }}>
                             <div style={{
                               height: '100%', width: `${pct}%`, borderRadius: 3,
-                              background: 'linear-gradient(90deg, #1e40af, #3b82f6)',
+                              background: 'linear-gradient(90deg, #2563eb, #4f8ff7)',
                               transition: 'width 0.6s ease',
                             }} />
                           </div>
