@@ -10,10 +10,10 @@ import {
   ClockCircleOutlined, ThunderboltOutlined, FileTextOutlined,
   NodeIndexOutlined, ApartmentOutlined, FundOutlined,
   PieChartOutlined, DotChartOutlined, SafetyCertificateOutlined,
-  ExclamationCircleOutlined, RiseOutlined,
+  ExclamationCircleOutlined, RiseOutlined, DownloadOutlined,
 } from '@ant-design/icons';
 import ReactMarkdown from 'react-markdown';
-import { scanSingle, getFinancial, getGraph } from '../api/client';
+import { scanSingle, getFinancial, getGraph, getReportDownloadUrl } from '../api/client';
 
 const riskColorMap: Record<string, string> = {
   '高风险': '#ef4444',
@@ -233,7 +233,18 @@ export default function CompanyDetail() {
             key: 'report',
             label: <><FileTextOutlined /> 完整报告</>,
             children: (
-              <Card>
+              <Card
+                extra={
+                  <Button
+                    type="primary"
+                    icon={<DownloadOutlined />}
+                    href={getReportDownloadUrl(code!, windowDays)}
+                    target="_blank"
+                  >
+                    下载报告
+                  </Button>
+                }
+              >
                 <div className="markdown-body" style={{ maxHeight: 650, overflow: 'auto', padding: '0 8px' }}>
                   <ReactMarkdown>{data.report_markdown}</ReactMarkdown>
                 </div>

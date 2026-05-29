@@ -215,6 +215,21 @@ async def get_report(company_code: str, window_days: int = Query(60)):
     }
 
 
+@router.get("/report/{company_code}/download")
+async def download_report(company_code: str, window_days: int = Query(60)):
+    """Download the risk report as a Markdown file."""
+    result = get_full_prediction(company_code, window_days)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"公司 {company_code} 未找到")
+    from fastapi.responses import PlainTextResponse
+    filename = f"risk_report_{company_code}_{window_days}d.md"
+    return PlainTextResponse(
+        content=result["report_markdown"],
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/trace/{company_code}")
 async def get_trace(company_code: str, window_days: int = Query(60)):
     result = get_full_prediction(company_code, window_days)

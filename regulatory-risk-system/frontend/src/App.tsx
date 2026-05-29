@@ -7,6 +7,7 @@ import {
   ApiOutlined,
   HistoryOutlined,
   ThunderboltOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
@@ -16,6 +17,7 @@ import EvalCenter from './pages/EvalCenter';
 import McpTools from './pages/McpTools';
 import History from './pages/History';
 import MlMetrics from './pages/MlMetrics';
+import SkillFiles from './pages/SkillFiles';
 
 const { Header, Sider, Content } = Layout;
 
@@ -25,6 +27,7 @@ const menuItems = [
   { key: '/ml', icon: <ThunderboltOutlined />, label: '模型指标' },
   { key: '/eval', icon: <ExperimentOutlined />, label: '评估中心' },
   { key: '/mcp', icon: <ApiOutlined />, label: 'MCP 工具' },
+  { key: '/skills', icon: <FileTextOutlined />, label: 'Skill 文件' },
   { key: '/history', icon: <HistoryOutlined />, label: '扫雷历史' },
 ];
 
@@ -84,6 +87,7 @@ function AppLayout() {
             <Route path="/mcp" element={<McpTools />} />
             <Route path="/history" element={<History />} />
             <Route path="/ml" element={<MlMetrics />} />
+            <Route path="/skills" element={<SkillFiles />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Content>

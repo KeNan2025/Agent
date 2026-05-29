@@ -146,3 +146,64 @@ class SkillRepository:
             v["avg_ms"] = round(v["duration_ms"] / max(1, v["count"]), 1)
             v["success_rate"] = round(v["success"] / max(1, v["count"]), 3)
         return agg
+
+
+class SkillFileRepository:
+    async def create(
+        self, filename: str, original_name: str, content: str,
+        content_type: str = "text/plain", size_bytes: int = 0,
+        skill_name: str | None = None, description: str = "",
+    ) -> SkillFile:
+        from app.database.models import SkillFile
+        async with async_session() as s:
+            row = SkillFile(
+                filename=filename, original_name=original_name,
+                content=content, content_type=content_type,
+                size_bytes=size_bytes, skill_name=skill_name,
+                description=description,
+            )
+            s.add(row)
+            await s.commit()
+            await s.refresh(row)
+            return row
+
+    async def list_all(self, skill_name: str | None = None) -> list[SkillFile]:
+        from app.database.models import SkillFile
+        async with async_session() as s:
+            q = select(SkillFile).order_by(desc(SkillFile.updated_at))
+            if skill_name:
+                q = q.where(SkillFile.skill_name == skill_name)
+            r = await s.execute(q)
+            return list(r.scalars().all())
+
+    async def get(self, file_id: int) -> SkillFile | None:
+        from app.database.models import SkillFile
+        async with async_session() as s:
+            r = await s.execute(select(SkillFile).where(SkillFile.id == file_id))
+            return r.scalars().first()
+
+    async def update_content(self, file_id: int, content: str, description: str = "") -> SkillFile | None:
+        from app.database.models import SkillFile
+        async with async_session() as s:
+            r = await s.execute(select(SkillFile).where(SkillFile.id == file_id))
+            row = r.scalars().first()
+            if not row:
+                return None
+            row.content = content
+            if description:
+                row.description = description
+            row.updated_at = datetime.utcnow()
+            await s.commit()
+            await s.refresh(row)
+            return row
+
+    async def delete(self, file_id: int) -> bool:
+        from app.database.models import SkillFile
+        async with async_session() as s:
+            r = await s.execute(select(SkillFile).where(SkillFile.id == file_id))
+            row = r.scalars().first()
+            if not row:
+                return False
+            await s.delete(row)
+            await s.commit()
+            return True

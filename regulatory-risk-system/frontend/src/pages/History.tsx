@@ -5,8 +5,9 @@ import {
 import {
   HistoryOutlined, FileTextOutlined, ClockCircleOutlined,
   ThunderboltOutlined, CloseOutlined, WarningOutlined, RightOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
-import { listScans, getScanTrace } from '../api/client';
+import { listScans, getScanTrace, getTraceExportUrl } from '../api/client';
 import { useNavigate } from 'react-router-dom';
 
 const riskColorMap: Record<string, string> = {
@@ -162,7 +163,20 @@ export default function History() {
                   <Space><FileTextOutlined style={{ color: '#4f8ff7' }} />Trace 详情</Space>
                 }
                 extra={
-                  <Button type="text" icon={<CloseOutlined />} onClick={() => setTrace(null)} />
+                  <Space>
+                    <Button
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      onClick={() => {
+                        if (trace?.scan_id) {
+                          window.open(getTraceExportUrl(trace.scan_id), '_blank');
+                        }
+                      }}
+                    >
+                      导出 Trace
+                    </Button>
+                    <Button type="text" icon={<CloseOutlined />} onClick={() => setTrace(null)} />
+                  </Space>
                 }
               >
                 <Spin spinning={traceLoading}>

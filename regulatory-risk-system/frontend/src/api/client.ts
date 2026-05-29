@@ -124,3 +124,58 @@ export async function getScanTrace(scanId: string) {
   const { data } = await api.get(`/history/scans/${scanId}/trace`);
   return data;
 }
+
+// Report download
+export function getReportDownloadUrl(companyCode: string, windowDays = 60) {
+  return `/api/v1/report/${companyCode}/download?window_days=${windowDays}`;
+}
+
+// Trace export
+export function getTraceExportUrl(scanId: string) {
+  return `/api/v1/history/scans/${scanId}/trace/export`;
+}
+
+// Skill files
+export async function listSkillFiles(skillName?: string) {
+  const params: Record<string, any> = {};
+  if (skillName) params.skill_name = skillName;
+  const { data } = await api.get('/skills/files', { params });
+  return data;
+}
+
+export async function getSkillFile(fileId: number) {
+  const { data } = await api.get(`/skills/files/${fileId}`);
+  return data;
+}
+
+export function getSkillFileDownloadUrl(fileId: number) {
+  return `/api/v1/skills/files/${fileId}/download`;
+}
+
+export async function uploadSkillFile(
+  file: File,
+  skillName?: string,
+  description?: string,
+) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (skillName) formData.append('skill_name', skillName);
+  if (description) formData.append('description', description);
+  const { data } = await api.post('/skills/files/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return data;
+}
+
+export async function updateSkillFile(fileId: number, content: string, description = '') {
+  const formData = new FormData();
+  formData.append('content', content);
+  if (description) formData.append('description', description);
+  const { data } = await api.put(`/skills/files/${fileId}`, formData);
+  return data;
+}
+
+export async function deleteSkillFile(fileId: number) {
+  const { data } = await api.delete(`/skills/files/${fileId}`);
+  return data;
+}
