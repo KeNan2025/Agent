@@ -42,13 +42,4 @@ services:
       - backend
     restart: unless-stopped
 
-  portal:
-    image: nginx:alpine
-    ports:
-      - "8080:80"
-    volumes:
-      - ../portal:/usr/share/nginx/html:ro
-    depends_on:
-      - frontend
-      - digital-twin
-    restart: unless-stopped
+  
