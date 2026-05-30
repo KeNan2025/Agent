@@ -30,8 +30,8 @@ import { getReportDownloadUrl } from '../api/client';
 /* ── Types ── */
 
 interface CompanyOption {
-  company_code: string;
-  company_name: string;
+  code: string;
+  name: string;
   industry?: string;
 }
 
@@ -581,8 +581,8 @@ export default function CompanyTwin() {
                   (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
                 }
                 options={companies.map((c) => ({
-                  value: c.company_code,
-                  label: `${c.company_code}  ${c.company_name}`,
+                  value: c.code,
+                  label: `${c.code}  ${c.name}`,
                 }))}
                 notFoundContent={companiesLoading ? <Spin size="small" /> : <Empty description="无公司数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />}
               />

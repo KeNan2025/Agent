@@ -48,8 +48,9 @@ interface PipelineRecord {
 }
 
 interface Company {
-  company_code: string;
-  company_name: string;
+  code: string;
+  name: string;
+  industry?: string;
 }
 
 /* ── Helpers ── */
@@ -319,8 +320,8 @@ export default function PipelineTwin() {
                 (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
               }
               options={companies.map((c) => ({
-                label: `${c.company_code} · ${c.company_name}`,
-                value: c.company_code,
+                label: `${c.code} · ${c.name}`,
+                value: c.code,
               }))}
             />
           </Col>
