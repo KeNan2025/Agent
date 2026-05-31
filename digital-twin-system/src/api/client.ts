@@ -62,3 +62,51 @@ export async function listScans(limit = 10) {
 export function getReportDownloadUrl(companyCode: string, windowDays = 60) {
   return `/api/v1/report/${companyCode}/download?window_days=${windowDays}`;
 }
+
+/* ═══════════ Digital Twin API ═══════════ */
+
+const twinApi = axios.create({ baseURL: '/api/twin' });
+
+export async function getTwinState() {
+  const { data } = await twinApi.get('/state');
+  return data;
+}
+
+export async function getTwinEntity(entityId: string) {
+  const { data } = await twinApi.get(`/entity/${entityId}`);
+  return data;
+}
+
+export async function updateTwinEntity(entityId: string, updates: Record<string, any>) {
+  const { data } = await twinApi.put(`/entity/${entityId}`, updates);
+  return data;
+}
+
+export async function addTwinEntity(entity: Record<string, any>) {
+  const { data } = await twinApi.post('/entity', entity);
+  return data;
+}
+
+export async function deleteTwinEntity(entityId: string) {
+  const { data } = await twinApi.delete(`/entity/${entityId}`);
+  return data;
+}
+
+export async function sendTwinCommand(entityId: string, command: string, params: Record<string, any> = {}) {
+  const { data } = await twinApi.post('/command', { entityId, command, params });
+  return data;
+}
+
+export async function getTwinHistory(entityId?: string, startTime?: number, endTime?: number, limit = 100) {
+  const params: Record<string, any> = { limit };
+  if (entityId) params.entityId = entityId;
+  if (startTime) params.startTime = startTime;
+  if (endTime) params.endTime = endTime;
+  const { data } = await twinApi.get('/history', { params });
+  return data;
+}
+
+export async function requestTwinPrediction(entityId: string, horizonMs: number) {
+  const { data } = await twinApi.post('/predict', { entityId, horizonMs });
+  return data;
+}

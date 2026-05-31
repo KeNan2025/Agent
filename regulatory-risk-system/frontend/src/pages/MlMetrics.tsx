@@ -60,7 +60,7 @@ export default function MlMetrics() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>特征维度</span>}
                 value={metrics?.n_features ?? 0}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#722ed1' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#a855f7' }}
               />
             </Card>
           </Col>
@@ -69,7 +69,7 @@ export default function MlMetrics() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>AUC-ROC</span>}
                 value={metrics?.metrics?.auc_roc?.toFixed(3) ?? '-'}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#1a5cff' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#00d4ff' }}
               />
             </Card>
           </Col>
@@ -78,7 +78,7 @@ export default function MlMetrics() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>AUC-PR</span>}
                 value={metrics?.metrics?.auc_pr?.toFixed(3) ?? '-'}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#10b981' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#00ff88' }}
               />
             </Card>
           </Col>
@@ -87,7 +87,7 @@ export default function MlMetrics() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>F1 (最优阈值)</span>}
                 value={metrics?.metrics?.f1?.toFixed(3) ?? '-'}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#06b6d4' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#22d3ee' }}
               />
             </Card>
           </Col>
@@ -97,7 +97,7 @@ export default function MlMetrics() {
           <Col xs={24} lg={12}>
             <Card
               title={
-                <Space><FundOutlined style={{ color: '#1a5cff' }} /><span style={{ fontWeight: 600 }}>Base Model 性能 (OOF AUC)</span></Space>
+                <Space><FundOutlined style={{ color: '#00d4ff' }} /><span style={{ fontWeight: 600 }}>Base Model 性能 (OOF AUC)</span></Space>
               }
               extra={
                 <Button onClick={retrain} className="btn-warning" loading={training} icon={<ReloadOutlined />}>
@@ -124,7 +124,7 @@ export default function MlMetrics() {
           <Col xs={24} lg={12}>
             <Card
               title={
-                <Space><BarChartOutlined style={{ color: '#f59e0b' }} /><span style={{ fontWeight: 600 }}>Top-20 特征重要性</span></Space>
+                <Space><BarChartOutlined style={{ color: '#ffbe0b' }} /><span style={{ fontWeight: 600 }}>Top-20 特征重要性</span></Space>
               }
             >
               <Table
@@ -150,7 +150,7 @@ export default function MlMetrics() {
                           <div style={{ flex: 1, height: 10, borderRadius: 5, background: 'rgba(59,130,246,0.1)', overflow: 'hidden' }}>
                             <div style={{
                               height: '100%', width: `${pct}%`, borderRadius: 3,
-                              background: 'linear-gradient(90deg, #1a5cff, #1a5cff)',
+                              background: 'linear-gradient(90deg, #00d4ff, #00d4ff)',
                               transition: 'width 0.6s ease',
                             }} />
                           </div>

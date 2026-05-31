@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import App from './App';
 import './styles/global.css';
@@ -10,93 +10,94 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <ConfigProvider
       locale={zhCN}
       theme={{
+        algorithm: theme.darkAlgorithm,
         token: {
-          colorPrimary: '#1a5cff',
-          colorBgContainer: '#ffffff',
-          colorBgElevated: '#ffffff',
-          colorBgLayout: '#f0f2f5',
-          colorBorder: '#e5e7eb',
-          colorBorderSecondary: '#f0f0f0',
-          colorText: '#1f2937',
-          colorTextSecondary: '#6b7280',
-          colorTextTertiary: '#9ca3af',
-          colorTextQuaternary: '#d1d5db',
-          colorFillSecondary: '#f3f4f6',
-          colorFillTertiary: '#f9fafb',
-          colorSuccess: '#059669',
-          colorWarning: '#d97706',
-          colorError: '#dc2626',
-          colorInfo: '#1a5cff',
+          colorPrimary: '#00d4ff',
+          colorBgContainer: 'rgba(11, 17, 32, 0.85)',
+          colorBgElevated: '#0f172a',
+          colorBgLayout: '#020617',
+          colorBorder: 'rgba(0, 212, 255, 0.12)',
+          colorBorderSecondary: 'rgba(0, 212, 255, 0.08)',
+          colorText: '#e8f4ff',
+          colorTextSecondary: '#a0c8ff',
+          colorTextTertiary: '#5a7fa0',
+          colorTextQuaternary: '#3d5a73',
+          colorFillSecondary: 'rgba(0, 212, 255, 0.04)',
+          colorFillTertiary: 'rgba(0, 212, 255, 0.02)',
+          colorSuccess: '#00ff88',
+          colorWarning: '#ffbe0b',
+          colorError: '#ff4757',
+          colorInfo: '#00d4ff',
           borderRadius: 10,
           wireframe: false,
-          fontFamily: '-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", sans-serif',
+          fontFamily: '"PingFang SC", "Microsoft YaHei", -apple-system, sans-serif',
         },
         components: {
           Layout: {
-            siderBg: '#0f1724',
-            headerBg: 'rgba(255,255,255,0.92)',
-            bodyBg: '#f0f2f5',
+            siderBg: '#020617',
+            headerBg: 'rgba(2, 6, 23, 0.85)',
+            bodyBg: '#020617',
           },
           Menu: {
             darkItemBg: 'transparent',
             darkSubMenuItemBg: 'transparent',
-            darkItemSelectedBg: '#1a5cff',
-            darkItemSelectedColor: '#ffffff',
-            darkItemColor: 'rgba(255,255,255,0.55)',
-            darkItemHoverColor: 'rgba(255,255,255,0.85)',
-            darkItemHoverBg: 'rgba(255,255,255,0.08)',
+            darkItemSelectedBg: 'rgba(0, 212, 255, 0.08)',
+            darkItemSelectedColor: '#00d4ff',
+            darkItemColor: 'rgba(160, 200, 255, 0.55)',
+            darkItemHoverColor: 'rgba(160, 200, 255, 0.85)',
+            darkItemHoverBg: 'rgba(0, 212, 255, 0.06)',
           },
           Table: {
-            headerBg: '#f9fafb',
-            headerColor: '#6b7280',
-            rowHoverBg: 'rgba(26,92,255,0.03)',
-            borderColor: '#f0f0f0',
+            headerBg: 'rgba(0, 212, 255, 0.03)',
+            headerColor: '#5a7fa0',
+            rowHoverBg: 'rgba(0, 212, 255, 0.03)',
+            borderColor: 'rgba(0, 212, 255, 0.08)',
           },
           Card: {
-            colorBgContainer: '#ffffff',
-            colorBorderSecondary: '#e5e7eb',
+            colorBgContainer: 'rgba(11, 17, 32, 0.85)',
+            colorBorderSecondary: 'rgba(0, 212, 255, 0.12)',
           },
           Input: {
-            colorBgContainer: '#f3f4f6',
-            activeBorderColor: '#1a5cff',
+            colorBgContainer: 'rgba(30, 41, 59, 0.6)',
+            activeBorderColor: '#00d4ff',
           },
           Select: {
-            colorBgContainer: '#f3f4f6',
-            optionActiveBg: 'rgba(26,92,255,0.06)',
-            optionSelectedBg: 'rgba(26,92,255,0.10)',
+            colorBgContainer: 'rgba(30, 41, 59, 0.6)',
+            optionActiveBg: 'rgba(0, 212, 255, 0.06)',
+            optionSelectedBg: 'rgba(0, 212, 255, 0.10)',
           },
           Button: {
-            primaryShadow: '0 2px 6px rgba(26,92,255,0.20)',
+            primaryShadow: '0 0 15px rgba(0, 212, 255, 0.2)',
           },
           Progress: {
-            remainingColor: 'rgba(0,0,0,0.06)',
+            remainingColor: 'rgba(255, 255, 255, 0.04)',
           },
           Tag: {
             borderRadiusSM: 6,
           },
           Tabs: {
-            inkBarColor: '#1a5cff',
-            itemActiveColor: '#1a5cff',
-            itemSelectedColor: '#1a5cff',
-            itemHoverColor: '#1f2937',
+            inkBarColor: '#00d4ff',
+            itemActiveColor: '#00d4ff',
+            itemSelectedColor: '#00d4ff',
+            itemHoverColor: '#e8f4ff',
           },
           Timeline: {
-            dotBg: '#ffffff',
+            dotBg: '#020617',
           },
           Collapse: {
-            headerBg: '#ffffff',
-            contentBg: '#fafbfc',
+            headerBg: 'transparent',
+            contentBg: '#0b1120',
           },
           Alert: {
-            colorInfoBg: 'rgba(26,92,255,0.04)',
-            colorInfoBorder: 'rgba(26,92,255,0.12)',
+            colorInfoBg: 'rgba(0, 212, 255, 0.04)',
+            colorInfoBorder: 'rgba(0, 212, 255, 0.12)',
           },
           Modal: {
-            contentBg: '#ffffff',
-            headerBg: '#ffffff',
+            contentBg: '#0f172a',
+            headerBg: '#0f172a',
           },
           Dropdown: {
-            colorBgElevated: '#ffffff',
+            colorBgElevated: '#0f172a',
           },
         },
       }}

@@ -43,9 +43,10 @@ function AppLayout() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      {/* ── Sidebar ── */}
       <Sider
         theme="dark"
-        width={200}
+        width={210}
         className="app-sider"
         style={{ position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 20, overflow: 'auto' }}
       >
@@ -59,25 +60,42 @@ function AppLayout() {
           selectedKeys={[selected]}
           items={menuItems}
           onClick={({ key }) => navigate(key)}
-          style={{ background: 'transparent', borderRight: 'none', marginTop: 6 }}
+          style={{ background: 'transparent', borderRight: 'none' }}
         />
         <div className="sider-footer">
-          <span style={{ opacity: .5, fontSize: 11 }}>Agentic AI Platform · v2.0</span>
+          <div>Agentic AI Platform</div>
+          <div>v2.0 · Digital Twin</div>
         </div>
       </Sider>
-      <Layout style={{ marginLeft: 200 }}>
+
+      {/* ── Main Content ── */}
+      <Layout style={{ marginLeft: 210 }}>
+        {/* ── Header ── */}
         <Header className="app-header">
           <span className="header-title">
-            上市公司监管问询概率预测与扫雷预警系统
+            上市公司监管问询概率预测与扫雷预警
           </span>
           <div className="header-right">
             <span className="header-badge">
               <span className="dot" />
               系统运行中
             </span>
-            <span className="header-time">2026-05-29</span>
+            <span className="header-time">
+              {new Date().toLocaleDateString('zh-CN', {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                weekday: 'short',
+              })}
+            </span>
+            <span className="header-time" style={{ fontSize: 14, opacity: 0.8 }}>
+              {new Date().toLocaleTimeString('zh-CN', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false,
+              })}
+            </span>
           </div>
         </Header>
+
+        {/* ── Content ── */}
         <Content className="app-content fade-in">
           <Routes>
             <Route path="/" element={<Dashboard />} />

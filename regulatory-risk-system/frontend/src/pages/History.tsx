@@ -11,7 +11,7 @@ import { listScans, getScanTrace, getTraceExportUrl } from '../api/client';
 import { useNavigate } from 'react-router-dom';
 
 const riskColorMap: Record<string, string> = {
-  '高风险': '#ef4444', '中风险': '#f59e0b', '低风险': '#10b981',
+  '高风险': '#ff4757', '中风险': '#ffbe0b', '低风险': '#00ff88',
 };
 
 export default function History() {
@@ -47,7 +47,7 @@ export default function History() {
     {
       title: '公司代码', dataIndex: 'company_code', width: 110,
       render: (v: string) => (
-        <span style={{ fontWeight: 600, color: '#1a5cff', cursor: 'pointer' }}
+        <span style={{ fontWeight: 600, color: '#00d4ff', cursor: 'pointer' }}
               onClick={() => navigate(`/company/${v}`)}>
           {v}
         </span>
@@ -61,7 +61,7 @@ export default function History() {
       title: '问询概率', dataIndex: 'probability', width: 120,
       render: (v: number) => {
         const pct = Math.round(v * 100);
-        const color = v >= 0.6 ? '#ef4444' : v >= 0.3 ? '#f59e0b' : '#10b981';
+        const color = v >= 0.6 ? '#ff4757' : v >= 0.3 ? '#ffbe0b' : '#00ff88';
         return (
           <span style={{ fontWeight: 600, color, fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
         );
@@ -115,7 +115,7 @@ export default function History() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>历史扫雷次数</span>}
                 value={scans.length}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#1a5cff' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#00d4ff' }}
               />
             </Card>
           </Col>
@@ -126,7 +126,7 @@ export default function History() {
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>高风险占比</span>}
                 value={scans.length ? (highCount / scans.length * 100).toFixed(1) : 0}
                 suffix="%"
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#ef4444' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#ff4757' }}
               />
             </Card>
           </Col>
@@ -136,7 +136,7 @@ export default function History() {
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>平均概率</span>}
                 value={(avgProb * 100).toFixed(1)}
                 suffix="%"
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#10b981' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#00ff88' }}
               />
             </Card>
           </Col>
@@ -146,7 +146,7 @@ export default function History() {
           <Col span={trace ? 14 : 24} style={{ transition: 'all 0.3s ease' }}>
             <Card
               title={
-                <Space><HistoryOutlined style={{ color: '#1a5cff' }} /><span style={{ fontWeight: 600 }}>持久化扫雷历史</span></Space>
+                <Space><HistoryOutlined style={{ color: '#00d4ff' }} /><span style={{ fontWeight: 600 }}>持久化扫雷历史</span></Space>
               }
             >
               <Table
@@ -160,7 +160,7 @@ export default function History() {
             <Col span={10} className="slide-in-left">
               <Card
                 title={
-                  <Space><FileTextOutlined style={{ color: '#1a5cff' }} />Trace 详情</Space>
+                  <Space><FileTextOutlined style={{ color: '#00d4ff' }} />Trace 详情</Space>
                 }
                 extra={
                   <Space>

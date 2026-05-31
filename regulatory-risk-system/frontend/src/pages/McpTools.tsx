@@ -76,7 +76,7 @@ export default function McpTools() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Progress
               percent={pct} size="small" showInfo={false}
-              strokeColor={pct >= 90 ? '#10b981' : pct >= 70 ? '#f59e0b' : '#ef4444'}
+              strokeColor={pct >= 90 ? '#00ff88' : pct >= 70 ? '#ffbe0b' : '#ff4757'}
               style={{ width: 60, margin: 0 }}
             />
             <span style={{ fontSize: 12, fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>{pct}%</span>
@@ -121,7 +121,7 @@ export default function McpTools() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>可挂载 Skill</span>}
                 value={tools.length}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#722ed1' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#a855f7' }}
               />
             </Card>
           </Col>
@@ -131,7 +131,7 @@ export default function McpTools() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>24h 总调用</span>}
                 value={totalCalls}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#06b6d4' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#22d3ee' }}
               />
             </Card>
           </Col>
@@ -155,7 +155,7 @@ export default function McpTools() {
           <Col span={selected ? 14 : 24} style={{ transition: 'all 0.3s ease' }}>
             <Card
               title={
-                <Space><ApiOutlined style={{ color: '#722ed1' }} /><span style={{ fontWeight: 600 }}>所有可用 Skill</span></Space>
+                <Space><ApiOutlined style={{ color: '#a855f7' }} /><span style={{ fontWeight: 600 }}>所有可用 Skill</span></Space>
               }
             >
               <Table
@@ -169,7 +169,7 @@ export default function McpTools() {
               <Card
                 title={
                   <Space>
-                    <PlayCircleOutlined style={{ color: '#1a5cff' }} />
+                    <PlayCircleOutlined style={{ color: '#00d4ff' }} />
                     <span>调用</span>
                     <Tag color="purple" style={{ borderRadius: 4 }}>{selected.name}</Tag>
                   </Space>
@@ -200,7 +200,7 @@ export default function McpTools() {
                     size="small" className="result-panel"
                     style={{
                       marginTop: 12,
-                      borderLeft: `3px solid ${result.ok ? '#10b981' : '#ef4444'}`,
+                      borderLeft: `3px solid ${result.ok ? '#00ff88' : '#ff4757'}`,
                       ...(result.ok
                         ? { background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.12)' }
                         : { background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)' }

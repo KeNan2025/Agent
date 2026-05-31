@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { scanBatch } from '../api/client';
 
 const riskColorMap: Record<string, string> = {
-  '高风险': '#ef4444', '中风险': '#f59e0b', '低风险': '#10b981',
+  '高风险': '#ff4757', '中风险': '#ffbe0b', '低风险': '#00ff88',
 };
 
 const riskBadgeMap: Record<string, string> = {
@@ -52,7 +52,7 @@ export default function BatchScan() {
       sorter: (a: any, b: any) => a.inquiry_probability - b.inquiry_probability,
       render: (v: number) => {
         const pct = Math.round(v * 100);
-        const color = v >= 0.6 ? '#ef4444' : v >= 0.3 ? '#f59e0b' : '#10b981';
+        const color = v >= 0.6 ? '#ff4757' : v >= 0.3 ? '#ffbe0b' : '#00ff88';
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ flex: 1 }}>
@@ -183,7 +183,7 @@ export default function BatchScan() {
                 <Statistic
                   title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>扫描公司数</span>}
                   value={results.total}
-                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#60a5fa' }}
+                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#00d4ff' }}
                 />
               </Card>
             </Col>
@@ -195,7 +195,7 @@ export default function BatchScan() {
                 <Statistic
                   title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>高风险公司</span>}
                   value={highCount}
-                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#f87171' }}
+                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#ff4757' }}
                 />
               </Card>
             </Col>
@@ -208,7 +208,7 @@ export default function BatchScan() {
                   title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>最高概率</span>}
                   value={(maxProb * 100).toFixed(1)}
                   suffix="%"
-                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#fbbf24' }}
+                  valueStyle={{ fontSize: 28, fontWeight: 700, color: '#ffbe0b' }}
                 />
               </Card>
             </Col>

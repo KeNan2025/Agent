@@ -239,8 +239,8 @@ export default function SkillFiles() {
           const isReq = required.includes(k);
           return (
             <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
-              <span style={{ color: '#93c5fd', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{k}</span>
-              <span style={{ color: '#a5f3fc', fontSize: 11 }}>{p.type ?? 'any'}</span>
+              <span style={{ color: '#a0c8ff', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{k}</span>
+              <span style={{ color: '#a0c8ff', fontSize: 11 }}>{p.type ?? 'any'}</span>
               {isReq && <Tag color="red" style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>必填</Tag>}
             </div>
           );
@@ -249,7 +249,7 @@ export default function SkillFiles() {
     );
 
     return (
-      <Tooltip title={content} color="#1f2937" overlayStyle={{ borderRadius: 8 }}>
+      <Tooltip title={content} color="#0f172a" overlayStyle={{ borderRadius: 8 }}>
         <span style={{ color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
           查看详情
         </span>
@@ -343,7 +343,7 @@ export default function SkillFiles() {
           style={{ marginBottom: 24 }}
           title={
             <Space>
-              <ApiOutlined style={{ color: '#1a5cff' }} />
+              <ApiOutlined style={{ color: '#00d4ff' }} />
               <span style={{ fontWeight: 600 }}>系统已注册 Skill</span>
             </Space>
           }
@@ -383,7 +383,7 @@ export default function SkillFiles() {
                       bodyStyle={{ padding: '16px 18px' }}
                     >
                       <Space style={{ marginBottom: 10 }}>
-                        <ApiOutlined style={{ color: '#1a5cff', fontSize: 16 }} />
+                        <ApiOutlined style={{ color: '#00d4ff', fontSize: 16 }} />
                         <Tag color="blue" style={{ fontWeight: 600, borderRadius: 4 }}>
                           {skill.name}
                         </Tag>
@@ -434,7 +434,7 @@ export default function SkillFiles() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>文件总数</span>}
                 value={totalFiles}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#1a5cff' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#00d4ff' }}
               />
             </Card>
           </Col>
@@ -444,7 +444,7 @@ export default function SkillFiles() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>Skill 类型</span>}
                 value={fileSkillNames.length}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#7c3aed' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#a855f7' }}
               />
             </Card>
           </Col>
@@ -454,7 +454,7 @@ export default function SkillFiles() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>24h 更新</span>}
                 value={recentUpdated}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#0891b2' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#22d3ee' }}
               />
             </Card>
           </Col>
@@ -464,7 +464,7 @@ export default function SkillFiles() {
               <Statistic
                 title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>总大小</span>}
                 value={formatSize(totalSize)}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#059669' }}
+                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#00ff88' }}
               />
             </Card>
           </Col>
@@ -506,7 +506,7 @@ export default function SkillFiles() {
         <Modal
           title={
             <Space>
-              <CloudUploadOutlined style={{ color: '#1a5cff' }} />
+              <CloudUploadOutlined style={{ color: '#00d4ff' }} />
               <span>上传文件到 Skill 系统</span>
             </Space>
           }
@@ -601,7 +601,7 @@ export default function SkillFiles() {
         <Modal
           title={
             <Space>
-              <EyeOutlined style={{ color: '#1a5cff' }} />
+              <EyeOutlined style={{ color: '#00d4ff' }} />
               <span>查看文件 — </span>
               <Tag color="blue" style={{ borderRadius: 4 }}>{viewRecord?.filename ?? viewFilename}</Tag>
             </Space>
@@ -677,7 +677,7 @@ export default function SkillFiles() {
         <Modal
           title={
             <Space>
-              <EditOutlined style={{ color: '#1a5cff' }} />
+              <EditOutlined style={{ color: '#00d4ff' }} />
               <span>编辑文件 — </span>
               <Tag color="blue" style={{ borderRadius: 4 }}>{editFilename}</Tag>
             </Space>

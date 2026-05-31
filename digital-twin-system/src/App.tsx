@@ -1,9 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout, Menu } from 'antd';
 import {
-  AimOutlined, HeatMapOutlined, NodeIndexOutlined,
+  AimOutlined, HeatMapOutlined, NodeIndexOutlined, ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import DigitalTwinDashboard from './pages/DigitalTwinDashboard';
 import CompanyTwin from './pages/CompanyTwin';
 import MarketHeatmap from './pages/MarketHeatmap';
 import PipelineTwin from './pages/PipelineTwin';
@@ -11,6 +12,7 @@ import PipelineTwin from './pages/PipelineTwin';
 const { Header, Sider, Content } = Layout;
 
 const menuItems = [
+  { key: '/dashboard', icon: <ThunderboltOutlined />, label: '数字孪生主控台' },
   { key: '/company', icon: <AimOutlined />, label: '公司风险孪生' },
   { key: '/market', icon: <HeatMapOutlined />, label: '市场风险热力图' },
   { key: '/pipeline', icon: <NodeIndexOutlined />, label: 'Pipeline 运行孪生' },
@@ -50,10 +52,11 @@ function AppLayout() {
         </Header>
         <Content className="app-content fade-in">
           <Routes>
+            <Route path="/dashboard" element={<DigitalTwinDashboard />} />
             <Route path="/company" element={<CompanyTwin />} />
             <Route path="/market" element={<MarketHeatmap />} />
             <Route path="/pipeline" element={<PipelineTwin />} />
-            <Route path="*" element={<Navigate to="/company" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Content>
       </Layout>
