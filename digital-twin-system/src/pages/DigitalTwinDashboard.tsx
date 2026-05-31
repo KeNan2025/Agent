@@ -273,12 +273,11 @@ export default function DigitalTwinDashboard() {
                     </span>
                   ),
                   children: (
-                    <div style={{ background: '#0f172a', borderRadius: '8px', overflow: 'hidden' }}>
+                    <div style={{ borderRadius: 8, overflow: 'hidden', border: '1px solid rgba(0,212,255,0.1)' }}>
                       <Scene3D
                         entities={entities}
                         onEntityClick={handleEntityClick}
-                        width={undefined}
-                        height={600}
+                        height={580}
                       />
                     </div>
                   ),
