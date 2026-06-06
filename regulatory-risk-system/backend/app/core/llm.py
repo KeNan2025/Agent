@@ -161,6 +161,16 @@ class OpenAICompatibleClient(LLMClient):
         self.model = model
         self.timeout = timeout
         self.name = f"openai-compat:{model}"
+        self._async_client: Any = None
+
+    def _get_async_client(self) -> Any:
+        if self._async_client is None:
+            try:
+                import httpx
+            except ImportError as exc:
+                raise RuntimeError("httpx is required for OpenAICompatibleClient") from exc
+            self._async_client = httpx.AsyncClient(timeout=self.timeout)
+        return self._async_client
 
     def chat(
         self,
@@ -170,7 +180,33 @@ class OpenAICompatibleClient(LLMClient):
         max_tokens: int = 1024,
         response_format: Optional[dict[str, Any]] = None,
     ) -> LLMResponse:
-        # Lazy import to keep mock mode dependency-free
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(
+                    asyncio.run,
+                    self._async_chat(messages, temperature=temperature,
+                                     max_tokens=max_tokens, response_format=response_format),
+                )
+                return future.result()
+        return asyncio.run(
+            self._async_chat(messages, temperature=temperature,
+                             max_tokens=max_tokens, response_format=response_format),
+        )
+
+    async def _async_chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        temperature: float = 0.0,
+        max_tokens: int = 1024,
+        response_format: Optional[dict[str, Any]] = None,
+    ) -> LLMResponse:
         try:
             import httpx
         except ImportError as exc:
@@ -191,8 +227,8 @@ class OpenAICompatibleClient(LLMClient):
             "Content-Type": "application/json",
         }
         start = time.time()
-        with httpx.Client(timeout=self.timeout) as client:
-            resp = client.post(url, json=payload, headers=headers)
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()
         latency_ms = int((time.time() - start) * 1000)

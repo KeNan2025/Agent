@@ -3,6 +3,7 @@ from __future__ import annotations
 import random
 import hashlib
 from datetime import datetime, timedelta
+from app.config import MOCK_INQUIRY_RATE
 from app.models.schemas import (
     CompanyInfo, FinancialFeatures, RiskFactor, RiskCategory,
     ShapFeature, SimilarCase, AgentStep, RiskLevel,
@@ -331,7 +332,7 @@ def generate_report_markdown(company: CompanyInfo, probability: float, risk_leve
         f"- **公司**：{company.name}（{company.code}）",
         f"- **行业**：{company.industry}",
         f"- **市值**：{company.market_cap}亿元",
-        f"- **分析日期**：2024-12-15",
+        f"- **分析日期**：{__import__('datetime').date.today().isoformat()}",
         f"- **预测窗口**：60天",
         f"",
         f"## 风险概率评估",
@@ -398,7 +399,7 @@ def get_all_predictions(window_days: int = 60) -> list[dict]:
         companies = get_all_companies()
         for c in companies:
             rng = random.Random(_seed_from_code(c.code) + window_days)
-            is_risky = rng.random() < 0.15
+            is_risky = rng.random() < MOCK_INQUIRY_RATE
             prob = round(rng.uniform(0.55, 0.95), 3) if is_risky else round(rng.uniform(0.02, 0.35), 3)
             risk_level = RiskLevel.HIGH if prob >= 0.6 else (RiskLevel.MEDIUM if prob >= 0.3 else RiskLevel.LOW)
             fin = generate_financial_features(c, is_risky)

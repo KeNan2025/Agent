@@ -1,8 +1,8 @@
 """
-Feature engineering — 6 families × ≈235 dims as designed in §3.2.2.
+Feature engineering — 6 families × ~132 dims as designed in §3.2.2.
 
-A. Structured financial features (~100 dims) — derived from FinancialFeatures
-B. Announcement semantic features (~60 dims) — from LLM extraction (RiskFactor counts)
+A. Structured financial features (~29 dims) — derived from FinancialFeatures
+B. Announcement semantic features (~28 dims) — from LLM extraction (RiskFactor counts)
 C. Market & sentiment features (~25 dims) — synthesised from company hash
 D. Historical regulatory features (~15 dims)
 E. Knowledge graph features (~20 dims) — degree, PageRank, related-inquiry counts

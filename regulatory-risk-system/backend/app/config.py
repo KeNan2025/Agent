@@ -9,7 +9,7 @@ DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 MOCK_COMPANY_COUNT = 200
-MOCK_INQUIRY_RATE = 0.08
+MOCK_INQUIRY_RATE = 0.15
 PREDICTION_WINDOWS = [30, 60, 90]
 
 LLM_MODE = os.getenv("LLM_MODE", "mock")

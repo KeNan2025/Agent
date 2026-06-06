@@ -9,7 +9,6 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.agents.orchestrator import run_scan_async
 from app.core.framework import Checkpointer, Tracer
-from app.database import ScanRepository, TraceRepository
 from app.features.engineer import FeatureEngineer
 from app.graph import get_graph
 from app.ml.training import get_or_train
@@ -48,23 +47,35 @@ def _ml_predict(
 async def _persist_scan(
     final_state, probability: float, risk_level: str,
 ) -> None:
-    repo = ScanRepository()
-    trace_repo = TraceRepository()
+    from app.database.session import async_session
+    from app.database.models import ScanRecord, TraceLog
     try:
-        await repo.create(
-            scan_id=final_state.scan_id,
-            company_code=final_state.company_code,
-            window_days=final_state.window_days,
-            probability=probability,
-            risk_level=risk_level,
-            risk_hypothesis=final_state.risk_hypothesis,
-            analysis_plan=final_state.analysis_plan,
-            full_state=final_state.model_dump(mode="json"),
-        )
-        await trace_repo.add_many(
-            final_state.scan_id,
-            [e.model_dump() for e in final_state.trace_events],
-        )
+        async with async_session() as session:
+            async with session.begin():
+                scan = ScanRecord(
+                    scan_id=final_state.scan_id,
+                    company_code=final_state.company_code,
+                    window_days=final_state.window_days,
+                    probability=probability,
+                    risk_level=risk_level,
+                    risk_hypothesis=final_state.risk_hypothesis,
+                    analysis_plan=str(final_state.analysis_plan),
+                    full_state=final_state.model_dump(mode="json"),
+                )
+                session.add(scan)
+                for ev in final_state.trace_events:
+                    d = ev.model_dump()
+                    session.add(TraceLog(
+                        scan_id=final_state.scan_id,
+                        event_id=d.get("event_id", ""),
+                        node_name=d.get("node_name", ""),
+                        action=d.get("action", ""),
+                        input_summary=d.get("input_summary", ""),
+                        output_summary=d.get("output_summary", ""),
+                        skills_called=str(d.get("skills_called", [])),
+                        duration_ms=d.get("duration_ms", 0),
+                        tokens_used=d.get("tokens_used", 0),
+                    ))
     except Exception as exc:
         print(f"[persist] scan persistence skipped: {exc}")
 
@@ -202,6 +213,21 @@ async def get_report(company_code: str, window_days: int = Query(60)):
         "company_name": result["company"].name,
         "report_markdown": result["report_markdown"],
     }
+
+
+@router.get("/report/{company_code}/download")
+async def download_report(company_code: str, window_days: int = Query(60)):
+    """Download the risk report as a Markdown file."""
+    result = get_full_prediction(company_code, window_days)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"公司 {company_code} 未找到")
+    from fastapi.responses import PlainTextResponse
+    filename = f"risk_report_{company_code}_{window_days}d.md"
+    return PlainTextResponse(
+        content=result["report_markdown"],
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/trace/{company_code}")

@@ -10,6 +10,8 @@ from app.api.ml_routes import router as ml_router
 from app.api.eval_routes import router as eval_router
 from app.api.graph_routes import router as graph_router
 from app.api.history_routes import router as history_router
+from app.api.skill_files_routes import router as skill_files_router
+from app.api.twin_routes import router as twin_router
 # Import skills package — registers all skills with the global registry
 import app.skills  # noqa: F401
 
@@ -39,9 +41,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -53,6 +64,8 @@ app.include_router(ml_router)
 app.include_router(eval_router)
 app.include_router(graph_router)
 app.include_router(history_router)
+app.include_router(skill_files_router)
+app.include_router(twin_router)
 
 
 @app.get("/")
@@ -78,6 +91,11 @@ async def root():
             "eval_ablation": "/api/v1/eval/ablation",
             "eval_baseline": "/api/v1/eval/baseline",
             "history": "/api/v1/history/scans",
+            "history_trace": "/api/v1/history/scans/{scan_id}/trace",
+            "trace_export": "/api/v1/history/scans/{scan_id}/trace/export",
+            "report_download": "/api/v1/report/{company_code}/download",
+            "skill_files": "/api/v1/skills/files",
+            "skill_files_upload": "/api/v1/skills/files/upload",
             "docs": "/docs",
         },
     }

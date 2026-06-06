@@ -157,12 +157,74 @@ def rule_check(
     for rule in rules:
         expr = rule.get("expr", "")
         try:
-            ok = bool(eval(expr, {"__builtins__": {}}, dict(financial_data)))  # noqa: S307
+            ok = _safe_eval_expr(expr, financial_data)
         except Exception:
             ok = False
         if ok:
             hits.append({"name": rule.get("name", expr), "severity": rule.get("severity", "中")})
     return {"hits": hits, "n_hits": len(hits)}
+
+
+import ast
+import operator as _op
+
+_SAFE_OPS = {
+    ast.Add: _op.add, ast.Sub: _op.sub, ast.Mult: _op.mul,
+    ast.Div: _op.truediv, ast.Mod: _op.mod, ast.Pow: _op.pow,
+    ast.USub: _op.neg, ast.UAdd: _op.pos,
+    ast.Gt: _op.gt, ast.Lt: _op.lt, ast.GtE: _op.ge, ast.LtE: _op.le,
+    ast.Eq: _op.eq, ast.NotEq: _op.ne,
+    ast.And: lambda a, b: a and b,
+    ast.Or: lambda a, b: a or b,
+    ast.Not: _op.not_,
+}
+
+
+def _safe_eval_expr(expr: str, variables: dict[str, Any]) -> bool:
+    """Evaluate a simple comparison expression without using eval()."""
+    tree = ast.parse(expr, mode="eval")
+
+    def _eval(node: ast.expr) -> Any:
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant):
+            if not isinstance(node.value, (int, float, bool)):
+                raise ValueError(f"unsupported constant: {node.value!r}")
+            return node.value
+        if isinstance(node, ast.Name):
+            if node.id not in variables:
+                raise ValueError(f"unknown variable: {node.id}")
+            return variables[node.id]
+        if isinstance(node, ast.UnaryOp):
+            op_fn = _SAFE_OPS.get(type(node.op))
+            if op_fn is None:
+                raise ValueError(f"unsupported unary op: {type(node.op).__name__}")
+            return op_fn(_eval(node.operand))
+        if isinstance(node, ast.BinOp):
+            op_fn = _SAFE_OPS.get(type(node.op))
+            if op_fn is None:
+                raise ValueError(f"unsupported binary op: {type(node.op).__name__}")
+            return op_fn(_eval(node.left), _eval(node.right))
+        if isinstance(node, ast.Compare):
+            left = _eval(node.left)
+            for op, comparator in zip(node.ops, node.comparators):
+                op_fn = _SAFE_OPS.get(type(op))
+                if op_fn is None:
+                    raise ValueError(f"unsupported compare op: {type(op).__name__}")
+                right = _eval(comparator)
+                if not op_fn(left, right):
+                    return False
+                left = right
+            return True
+        if isinstance(node, ast.BoolOp):
+            op_fn = _SAFE_OPS[type(node.op)]
+            result = _eval(node.values[0])
+            for v in node.values[1:]:
+                result = op_fn(result, _eval(v))
+            return result
+        raise ValueError(f"unsupported AST node: {type(node).__name__}")
+
+    return bool(_eval(tree))
 
 
 _DEFAULT_RULES = [
