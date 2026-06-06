@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Card, Table, Button, Modal, Input, Upload, Space, Tag, Row, Col,
-  Statistic, Spin, message, Tooltip, Empty, Select, Descriptions, Divider
+  Spin, message, Tooltip, Empty, Select, Descriptions, Divider
 } from 'antd';
 import {
   FileTextOutlined, UploadOutlined, DownloadOutlined, EditOutlined,
@@ -12,29 +12,13 @@ import {
   listSkillFiles, getSkillFile, getSkillFileDownloadUrl,
   uploadSkillFile, updateSkillFile, deleteSkillFile, mcpListTools
 } from '../api/client';
+import type { SkillFile, McpTool } from '../types';
+import { formatSize, formatDate } from '../utils/format';
+import StatCard from '../components/StatCard';
+import PageTitle from '../components/PageTitle';
 
 const { Dragger } = Upload;
 const { TextArea } = Input;
-
-interface SkillFile {
-  id: number;
-  filename: string;
-  description: string;
-  skill_name: string;
-  size: number;
-  updated_at: string;
-  content?: string;
-}
-
-interface McpTool {
-  name: string;
-  description?: string;
-  inputSchema?: {
-    type: string;
-    properties?: Record<string, any>;
-    required?: string[];
-  };
-}
 
 export default function SkillFiles() {
   // ── System skills state ──
@@ -71,7 +55,6 @@ export default function SkillFiles() {
     try {
       const data = await listSkillFiles();
       const raw = Array.isArray(data) ? data : data.files ?? [];
-      // Map API fields (size_bytes) to interface fields (size)
       setFiles(raw.map((f: any) => ({ ...f, size: f.size_bytes ?? f.size ?? 0 })));
     } catch (e: any) {
       message.error('获取文件列表失败: ' + (e?.message ?? e));
@@ -111,27 +94,6 @@ export default function SkillFiles() {
     return (Date.now() - d) < 24 * 60 * 60 * 1000;
   }).length;
   const totalSize = files.reduce((sum, f) => sum + (f.size || 0), 0);
-  const skillDist = fileSkillNames.map((name) => ({
-    name,
-    count: files.filter((f) => f.skill_name === name).length,
-  }));
-
-  // ── Helpers ──
-  const formatSize = (bytes: number | undefined | null): string => {
-    const b = bytes || 0;
-    if (b < 1024) return b + ' B';
-    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
-    return (b / (1024 * 1024)).toFixed(1) + ' MB';
-  };
-
-  const formatDate = (dateStr: string): string => {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    return d.toLocaleString('zh-CN', {
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-    });
-  };
 
   // ── View ──
   const handleView = async (record: SkillFile) => {
@@ -176,8 +138,7 @@ export default function SkillFiles() {
 
   // ── Download ──
   const handleDownload = (record: SkillFile) => {
-    const url = getSkillFileDownloadUrl(record.id);
-    window.open(url, '_blank');
+    window.open(getSkillFileDownloadUrl(record.id), '_blank');
   };
 
   // ── Delete ──
@@ -224,23 +185,22 @@ export default function SkillFiles() {
   // ── Render input schema summary for tooltip ──
   const renderSchemaTooltip = (skill: McpTool) => {
     const schema = skill.inputSchema;
-    if (!schema || !schema.properties) return <span style={{ color: 'var(--text-3)', fontSize: 12 }}>无参数</span>;
+    if (!schema || !schema.properties) return <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>无参数</span>;
 
     const props = schema.properties;
     const required = schema.required ?? [];
     const keys = Object.keys(props);
-    const propCount = keys.length;
 
     const content = (
       <div style={{ maxWidth: 360, fontSize: 12, lineHeight: 1.8 }}>
-        <div style={{ fontWeight: 600, marginBottom: 6, color: '#fff' }}>输入参数 ({propCount})</div>
+        <div style={{ fontWeight: 600, marginBottom: 6, color: '#fff' }}>输入参数 ({keys.length})</div>
         {keys.map((k) => {
           const p = props[k];
           const isReq = required.includes(k);
           return (
             <div key={k} style={{ display: 'flex', gap: 8, marginBottom: 2 }}>
-              <span style={{ color: '#a0c8ff', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{k}</span>
-              <span style={{ color: '#a0c8ff', fontSize: 11 }}>{p.type ?? 'any'}</span>
+              <span style={{ color: 'var(--text-normal)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{k}</span>
+              <span style={{ color: 'var(--text-normal)', fontSize: 11 }}>{p.type ?? 'any'}</span>
               {isReq && <Tag color="red" style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px' }}>必填</Tag>}
             </div>
           );
@@ -249,8 +209,8 @@ export default function SkillFiles() {
     );
 
     return (
-      <Tooltip title={content} color="#0f172a" overlayStyle={{ borderRadius: 8 }}>
-        <span style={{ color: 'var(--accent)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+      <Tooltip title={content} overlayStyle={{ borderRadius: 8 }}>
+        <span style={{ color: 'var(--primary)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
           查看详情
         </span>
       </Tooltip>
@@ -263,16 +223,16 @@ export default function SkillFiles() {
       title: '文件名', dataIndex: 'filename', width: 220,
       render: (v: string) => (
         <Space>
-          <FileTextOutlined style={{ color: 'var(--text-2)' }} />
-          <span style={{ color: 'var(--text-1)', fontWeight: 500 }}>{v}</span>
+          <FileTextOutlined style={{ color: 'var(--text-normal)' }} />
+          <span style={{ color: 'var(--text-bright)', fontWeight: 500 }}>{v}</span>
         </Space>
       ),
     },
     {
       title: '描述', dataIndex: 'description', width: 220,
       render: (v: string) => (
-        <span style={{ color: 'var(--text-2)' }}>
-          {v || <span style={{ color: 'var(--text-3)' }}>-</span>}
+        <span style={{ color: 'var(--text-normal)' }}>
+          {v || <span style={{ color: 'var(--text-dim)' }}>-</span>}
         </span>
       ),
     },
@@ -280,15 +240,15 @@ export default function SkillFiles() {
       title: '所属 Skill', dataIndex: 'skill_name', width: 140,
       render: (v: string) =>
         v ? (
-          <Tag color="blue" style={{ borderRadius: 4, margin: 0 }}>{v}</Tag>
+          <Tag color="blue" style={{ margin: 0 }}>{v}</Tag>
         ) : (
-          <span style={{ color: 'var(--text-3)' }}>-</span>
+          <span style={{ color: 'var(--text-dim)' }}>-</span>
         ),
     },
     {
       title: '大小', dataIndex: 'size', width: 100,
       render: (v: number) => (
-        <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)' }}>
+        <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-bright)' }}>
           {formatSize(v)}
         </span>
       ),
@@ -296,7 +256,7 @@ export default function SkillFiles() {
     {
       title: '最后更新', dataIndex: 'updated_at', width: 160,
       render: (v: string) => (
-        <span style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ color: 'var(--text-normal)', fontVariantNumeric: 'tabular-nums' }}>
           {formatDate(v)}
         </span>
       ),
@@ -329,21 +289,14 @@ export default function SkillFiles() {
   return (
     <Spin spinning={loading}>
       <div className="page-container fade-in">
+        <PageTitle title="Skill 管理体系" />
 
-        {/* ── Page Title ── */}
-        <div className="page-title">
-          <span className="title-bar" />
-          <span>Skill 管理体系</span>
-        </div>
-
-        {/* ════════════════════════════════════════════════
-            System Skills Section
-            ════════════════════════════════════════════════ */}
+        {/* ── System Skills Section ── */}
         <Card
           style={{ marginBottom: 24 }}
           title={
             <Space>
-              <ApiOutlined style={{ color: '#00d4ff' }} />
+              <ApiOutlined style={{ color: 'var(--primary)' }} />
               <span style={{ fontWeight: 600 }}>系统已注册 Skill</span>
             </Space>
           }
@@ -363,7 +316,7 @@ export default function SkillFiles() {
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
-                <span style={{ color: 'var(--text-2)' }}>
+                <span style={{ color: 'var(--text-normal)' }}>
                   暂无已注册的系统 Skill，请先通过 MCP 接口注册
                 </span>
               }
@@ -379,17 +332,17 @@ export default function SkillFiles() {
                     <Card
                       size="small"
                       className="fade-in-up"
-                      style={{ height: '100%', borderRadius: 10 }}
-                      bodyStyle={{ padding: '16px 18px' }}
+                      style={{ height: '100%' }}
+                      styles={{ body: { padding: '16px 18px' } }}
                     >
                       <Space style={{ marginBottom: 10 }}>
-                        <ApiOutlined style={{ color: '#00d4ff', fontSize: 16 }} />
-                        <Tag color="blue" style={{ fontWeight: 600, borderRadius: 4 }}>
+                        <ApiOutlined style={{ color: 'var(--primary)', fontSize: 16 }} />
+                        <Tag color="blue" style={{ fontWeight: 600 }}>
                           {skill.name}
                         </Tag>
                       </Space>
                       <p style={{
-                        color: 'var(--text-2)', fontSize: 13, lineHeight: 1.6,
+                        color: 'var(--text-normal)', fontSize: 13, lineHeight: 1.6,
                         margin: 0, marginBottom: 12, minHeight: 40,
                         display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
@@ -401,10 +354,8 @@ export default function SkillFiles() {
                         alignItems: 'center', borderTop: '1px solid var(--divider)',
                         paddingTop: 10,
                       }}>
-                        <span style={{ color: 'var(--text-3)', fontSize: 12 }}>
-                          {propCount > 0
-                            ? <>{propCount} 个输入参数</>
-                            : <>无参数</>}
+                        <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>
+                          {propCount > 0 ? <>{propCount} 个输入参数</> : <>无参数</>}
                         </span>
                         {renderSchemaTooltip(skill)}
                       </div>
@@ -416,57 +367,24 @@ export default function SkillFiles() {
           )}
         </Card>
 
-        {/* Divider between sections */}
-        <Divider style={{ margin: '0 0 24px 0', color: 'var(--text-3)', fontSize: 12 }}>
+        <Divider style={{ margin: '0 0 24px 0', color: 'var(--text-dim)', fontSize: 12 }}>
           <ToolOutlined style={{ marginRight: 6 }} />
           文件管理
         </Divider>
 
-        {/* ════════════════════════════════════════════════
-            User File Manager Section
-            ════════════════════════════════════════════════ */}
-
-        {/* Stat row */}
+        {/* ── Stat row ── */}
         <Row gutter={[16, 16]} className="stat-row" style={{ marginBottom: 20 }}>
           <Col xs={12} sm={6}>
-            <Card className="stat-card stat-blue" bodyStyle={{ padding: '20px 24px' }}>
-              <FolderOpenOutlined className="stat-icon-bg" />
-              <Statistic
-                title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>文件总数</span>}
-                value={totalFiles}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#00d4ff' }}
-              />
-            </Card>
+            <StatCard title="文件总数" value={totalFiles} color="blue" icon={<FolderOpenOutlined />} />
           </Col>
           <Col xs={12} sm={6}>
-            <Card className="stat-card stat-purple" bodyStyle={{ padding: '20px 24px' }}>
-              <ToolOutlined className="stat-icon-bg" />
-              <Statistic
-                title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>Skill 类型</span>}
-                value={fileSkillNames.length}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#a855f7' }}
-              />
-            </Card>
+            <StatCard title="Skill 类型" value={fileSkillNames.length} color="purple" icon={<ToolOutlined />} />
           </Col>
           <Col xs={12} sm={6}>
-            <Card className="stat-card stat-cyan" bodyStyle={{ padding: '20px 24px' }}>
-              <FileTextOutlined className="stat-icon-bg" />
-              <Statistic
-                title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>24h 更新</span>}
-                value={recentUpdated}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#22d3ee' }}
-              />
-            </Card>
+            <StatCard title="24h 更新" value={recentUpdated} color="cyan" icon={<FileTextOutlined />} />
           </Col>
           <Col xs={12} sm={6}>
-            <Card className="stat-card stat-green" bodyStyle={{ padding: '20px 24px' }}>
-              <CodeOutlined className="stat-icon-bg" />
-              <Statistic
-                title={<span style={{ fontSize: 13, color: 'var(--text-3)' }}>总大小</span>}
-                value={formatSize(totalSize)}
-                valueStyle={{ fontSize: 28, fontWeight: 700, color: '#00ff88' }}
-              />
-            </Card>
+            <StatCard title="总大小" value={formatSize(totalSize)} color="green" icon={<CodeOutlined />} />
           </Col>
         </Row>
 
@@ -484,7 +402,7 @@ export default function SkillFiles() {
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
-                <span style={{ color: 'var(--text-2)' }}>
+                <span style={{ color: 'var(--text-normal)' }}>
                   暂无 Skill 文件，点击右上角「上传文件」添加
                 </span>
               }
@@ -500,13 +418,11 @@ export default function SkillFiles() {
           )}
         </Card>
 
-        {/* ════════════════════════════════════════════════
-            Upload Modal
-            ════════════════════════════════════════════════ */}
+        {/* ── Upload Modal ── */}
         <Modal
           title={
             <Space>
-              <CloudUploadOutlined style={{ color: '#00d4ff' }} />
+              <CloudUploadOutlined style={{ color: 'var(--primary)' }} />
               <span>上传文件到 Skill 系统</span>
             </Space>
           }
@@ -540,10 +456,7 @@ export default function SkillFiles() {
           <div style={{ padding: '8px 0' }}>
             <Dragger
               accept="*"
-              beforeUpload={(file) => {
-                setUploadFile(file);
-                return false;
-              }}
+              beforeUpload={(file) => { setUploadFile(file); return false; }}
               onRemove={() => setUploadFile(null)}
               showUploadList={true}
               maxCount={1}
@@ -551,16 +464,16 @@ export default function SkillFiles() {
               <p className="ant-upload-drag-icon">
                 <CloudUploadOutlined />
               </p>
-              <p className="ant-upload-text" style={{ color: 'var(--text-1)' }}>
+              <p className="ant-upload-text" style={{ color: 'var(--text-bright)' }}>
                 点击或拖拽文件到此区域上传
               </p>
-              <p className="ant-upload-hint" style={{ color: 'var(--text-3)' }}>
+              <p className="ant-upload-hint" style={{ color: 'var(--text-dim)' }}>
                 选择需要上传到 Skill 系统的文件，支持脚本、配置、数据文件等
               </p>
             </Dragger>
 
             <div style={{ marginTop: 16 }}>
-              <span style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-1)', marginBottom: 6 }}>
+              <span style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-bright)', marginBottom: 6 }}>
                 关联 Skill 名称
               </span>
               <Select
@@ -578,7 +491,7 @@ export default function SkillFiles() {
             </div>
 
             <div style={{ marginTop: 14 }}>
-              <span style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-1)', marginBottom: 6 }}>
+              <span style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-bright)', marginBottom: 6 }}>
                 文件用途说明
               </span>
               <TextArea
@@ -586,24 +499,18 @@ export default function SkillFiles() {
                 placeholder="请输入文件用途说明..."
                 value={uploadDesc}
                 onChange={(e) => setUploadDesc(e.target.value)}
-                style={{
-                  background: 'var(--bg-input)', color: 'var(--text-1)',
-                  borderColor: 'var(--border)', borderRadius: 8,
-                }}
               />
             </div>
           </div>
         </Modal>
 
-        {/* ════════════════════════════════════════════════
-            View Modal
-            ════════════════════════════════════════════════ */}
+        {/* ── View Modal ── */}
         <Modal
           title={
             <Space>
-              <EyeOutlined style={{ color: '#00d4ff' }} />
+              <EyeOutlined style={{ color: 'var(--primary)' }} />
               <span>查看文件 — </span>
-              <Tag color="blue" style={{ borderRadius: 4 }}>{viewRecord?.filename ?? viewFilename}</Tag>
+              <Tag color="blue">{viewRecord?.filename ?? viewFilename}</Tag>
             </Space>
           }
           open={viewOpen}
@@ -614,78 +521,61 @@ export default function SkillFiles() {
           }
         >
           {viewRecord && (
-            <>
-              <Descriptions
-                size="small"
-                bordered
-                column={2}
-                style={{ marginBottom: 16 }}
-              >
-                <Descriptions.Item label="文件名" span={2}>
-                  <Space>
-                    <FileTextOutlined style={{ color: 'var(--text-2)' }} />
-                    <span style={{ fontWeight: 500, color: 'var(--text-1)' }}>
-                      {viewRecord.filename}
-                    </span>
-                  </Space>
-                </Descriptions.Item>
-                <Descriptions.Item label="大小">
-                  <span style={{ color: 'var(--text-1)' }}>{formatSize(viewRecord.size)}</span>
-                </Descriptions.Item>
-                <Descriptions.Item label="所属 Skill">
-                  {viewRecord.skill_name
-                    ? <Tag color="blue" style={{ borderRadius: 4, margin: 0 }}>{viewRecord.skill_name}</Tag>
-                    : <span style={{ color: 'var(--text-3)' }}>-</span>}
-                </Descriptions.Item>
-                <Descriptions.Item label="描述" span={2}>
-                  <span style={{ color: 'var(--text-2)' }}>
-                    {viewRecord.description || <span style={{ color: 'var(--text-3)' }}>无描述</span>}
-                  </span>
-                </Descriptions.Item>
-                <Descriptions.Item label="最后更新" span={2}>
-                  <span style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
-                    {formatDate(viewRecord.updated_at)}
-                  </span>
-                </Descriptions.Item>
-              </Descriptions>
-            </>
+            <Descriptions size="small" bordered column={2} style={{ marginBottom: 16 }}>
+              <Descriptions.Item label="文件名" span={2}>
+                <Space>
+                  <FileTextOutlined style={{ color: 'var(--text-normal)' }} />
+                  <span style={{ fontWeight: 500, color: 'var(--text-bright)' }}>{viewRecord.filename}</span>
+                </Space>
+              </Descriptions.Item>
+              <Descriptions.Item label="大小">
+                <span style={{ color: 'var(--text-bright)' }}>{formatSize(viewRecord.size)}</span>
+              </Descriptions.Item>
+              <Descriptions.Item label="所属 Skill">
+                {viewRecord.skill_name
+                  ? <Tag color="blue" style={{ margin: 0 }}>{viewRecord.skill_name}</Tag>
+                  : <span style={{ color: 'var(--text-dim)' }}>-</span>}
+              </Descriptions.Item>
+              <Descriptions.Item label="描述" span={2}>
+                <span style={{ color: 'var(--text-normal)' }}>
+                  {viewRecord.description || <span style={{ color: 'var(--text-dim)' }}>无描述</span>}
+                </span>
+              </Descriptions.Item>
+              <Descriptions.Item label="最后更新" span={2}>
+                <span style={{ color: 'var(--text-normal)', fontVariantNumeric: 'tabular-nums' }}>
+                  {formatDate(viewRecord.updated_at)}
+                </span>
+              </Descriptions.Item>
+            </Descriptions>
           )}
           <div style={{
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border)',
+            background: 'var(--muted-bg)',
+            border: '1px solid var(--border-panel)',
             borderRadius: 8,
             padding: 16,
             maxHeight: 400,
             overflow: 'auto',
           }}>
             <pre className="text-mono" style={{
-              fontSize: 13,
-              color: 'var(--text-1)',
-              lineHeight: 1.6,
-              margin: 0,
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-all',
+              fontSize: 13, color: 'var(--text-bright)', lineHeight: 1.6,
+              margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-all',
             }}>
               {viewContent}
             </pre>
           </div>
         </Modal>
 
-        {/* ════════════════════════════════════════════════
-            Edit Modal
-            ════════════════════════════════════════════════ */}
+        {/* ── Edit Modal ── */}
         <Modal
           title={
             <Space>
-              <EditOutlined style={{ color: '#00d4ff' }} />
+              <EditOutlined style={{ color: 'var(--primary)' }} />
               <span>编辑文件 — </span>
-              <Tag color="blue" style={{ borderRadius: 4 }}>{editFilename}</Tag>
+              <Tag color="blue">{editFilename}</Tag>
             </Space>
           }
           open={editOpen}
-          onCancel={() => {
-            if (!saving) setEditOpen(false);
-          }}
+          onCancel={() => { if (!saving) setEditOpen(false); }}
           width={720}
           footer={
             <Space>
@@ -699,25 +589,21 @@ export default function SkillFiles() {
         >
           <div style={{ padding: '8px 0' }}>
             <div style={{ marginBottom: 14 }}>
-              <span style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-1)', marginBottom: 6 }}>
+              <span style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-bright)', marginBottom: 6 }}>
                 文件描述
               </span>
               <Input
                 placeholder="输入文件描述..."
                 value={editDesc}
                 onChange={(e) => setEditDesc(e.target.value)}
-                style={{
-                  background: 'var(--bg-input)', color: 'var(--text-1)',
-                  borderColor: 'var(--border)', borderRadius: 8,
-                }}
               />
             </div>
-            <span style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-1)', marginBottom: 6 }}>
+            <span style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-bright)', marginBottom: 6 }}>
               文件内容
             </span>
             <div style={{
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border)',
+              background: 'var(--muted-bg)',
+              border: '1px solid var(--border-panel)',
               borderRadius: 8,
               overflow: 'hidden',
             }}>
@@ -727,9 +613,8 @@ export default function SkillFiles() {
                 onChange={(e) => setEditContent(e.target.value)}
                 style={{
                   background: 'transparent',
-                  color: 'var(--text-1)',
+                  color: 'var(--text-bright)',
                   border: 'none',
-                  borderRadius: 8,
                   fontFamily: 'monospace',
                   fontSize: 13,
                   lineHeight: 1.6,
@@ -738,7 +623,6 @@ export default function SkillFiles() {
             </div>
           </div>
         </Modal>
-
       </div>
     </Spin>
   );
