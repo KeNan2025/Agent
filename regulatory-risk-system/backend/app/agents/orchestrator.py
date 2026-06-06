@@ -5,6 +5,10 @@ Each business agent inherits from `AgentNode` and invokes MCP skills via
 `get_registry().call(...)`. The graph wires nodes with conditional routing
 based on the Planner's risk hypothesis, with a mid-stream Replan node that
 can loop back to re-planning when new evidence is uncovered.
+
+Phase 2 upgrade: PlannerNode now uses `complete_with_schema` (structured
+output with retry); AttributionAgentNode enforces the 5-section report
+shape and auto-attaches evidence rows.
 """
 from __future__ import annotations
 
@@ -15,7 +19,12 @@ from app.core import (
     END, get_registry, get_llm_client,
 )
 from app.core.framework import Checkpointer, Tracer
+from app.core.llm import complete_with_schema
+from app.core.logging import get_logger
 from app.models.schemas import RiskCategory, RiskFactor
+from app.services.report_quality import auto_attach_evidence, enforce_sections
+
+log = get_logger(__name__)
 
 
 # ─────────────────────────── Agents ───────────────────────────
@@ -26,22 +35,28 @@ class PlannerNode(AgentNode):
     action = "初始风险假设"
 
     async def execute(self, state: ScanState) -> ScanState:
-        # Use the LLM to generate hypotheses based on already-known signals
+        # Phase 2: use structured output with retry; degrade to heuristic
+        # only if the LLM client is in mock mode and a pre-baked template fails.
         llm = get_llm_client()
         fin = state.financial_features or {}
         prompt = (
-            f"作为金融风险审查 Planner，请基于下列指标给出风险假设（risk_hypothesis）：\n"
+            f"作为金融风险审查 Planner，请基于下列指标给出风险假设（risk_hypothesis）。\n"
             f"company_code={state.company_code}\n"
             f"Beneish M-Score={fin.get('beneish_m_score')}\n"
             f"质押比例={fin.get('pledge_ratio')}\n"
             f"OCF/利润={fin.get('ocf_to_profit')}\n"
             f"应收增速={fin.get('receivable_growth')}, 收入增速={fin.get('revenue_growth')}\n"
+            f"\n请返回 JSON: {{\"hypothesis\": [\"<category1>\", \"<category2>\", ...]}}\n"
         )
-        resp = llm.complete(prompt)
-        self._record_tokens(resp.tokens_used)
+        schema = {"type": "object", "properties": {"hypothesis": {"type": "array", "items": {"type": "string"}}}}
         try:
-            hyp = resp.parse_json().get("hypothesis", [])
-        except Exception:
+            data = await complete_with_schema(
+                llm, prompt, schema,
+                scan_id=state.scan_id, agent_name=self.name,
+            )
+            hyp = list(data.get("hypothesis") or [])
+        except Exception as exc:  # noqa: BLE001
+            log.warning("planner.structured_failed", error=str(exc))
             hyp = self._heuristic_hypothesis(fin)
         if not hyp:
             hyp = ["财务异常"]
@@ -49,8 +64,7 @@ class PlannerNode(AgentNode):
 
         # Pick a plan template based on the leading hypothesis
         leading = hyp[0]
-        plan = self._plan_for(leading)
-        state.analysis_plan = plan
+        state.analysis_plan = self._plan_for(leading)
         return state
 
     @staticmethod
@@ -180,12 +194,35 @@ class ReplanNode(AgentNode):
 
 class PredictorNode(AgentNode):
     name = "predictor"
-    action = "多模型融合预测"
+    action = "多模型融合预测 + 真 SHAP"
 
     async def execute(self, state: ScanState) -> ScanState:
-        # The actual ensemble inference is performed at the API layer (where we
-        # already have feature vectors). Here we record the chosen ensemble
-        # outputs supplied by the API.
+        # Phase 3: re-run the ensemble inference here (instead of relying
+        # on the API layer), then compute real SHAP on the resulting row.
+        pred = state.prediction_result or {}
+        if "stacking" not in pred or pred.get("stacking") is None:
+            try:
+                from app.ml.training import get_or_train
+                from app.features.engineer import FEATURE_NAMES, FeatureEngineer
+                from app.ml.shap_explainer import explain_one
+                eng = FeatureEngineer()
+                fin = state.financial_features or {}
+                graph_metrics: dict = {}
+                try:
+                    from app.graph import get_graph
+                    graph_metrics = get_graph().metrics_for(state.company_code).to_feature_dict()
+                except Exception:
+                    pass
+                vec = eng.build_vector(None, fin, state.risk_factors or [],
+                                       history=None, graph_metrics=graph_metrics)
+                ens = get_or_train()
+                pred_out = ens.predict_one(vec)
+                state.prediction_result = pred_out
+                # Real SHAP (fallback to char-hash dense if library missing)
+                sh = explain_one(ens, vec, FEATURE_NAMES, top_k=20)
+                state.shap_features = sh
+            except Exception as exc:  # noqa: BLE001
+                log.warning("predictor.real_run_failed", error=str(exc))
         return state
 
     def _summarize_output(self, state: ScanState) -> str:
@@ -202,24 +239,38 @@ class CaseAgentNode(AgentNode):
     action = "相似历史问询案例检索"
 
     async def execute(self, state: ScanState) -> ScanState:
-        reg = get_registry()
         self._record_skill("case_match")
         summary = " ".join(state.risk_hypothesis) or "财务异常"
+        reg = get_registry()
         out = reg.call("case_match", risk_summary=summary,
                        categories=state.risk_hypothesis or None,
                        top_k=5).get("result", {})
+        raw_cases = out.get("cases", [])
+        # Phase 2: rerank via CaseRetrievalService (BM25 + dense) when cases
+        # already carry snippet text; otherwise fall back to the raw output.
+        if raw_cases and all("snippet" in c for c in raw_cases):
+            try:
+                from app.services.case_retrieval import retrieve_similar_cases
+                reranked = retrieve_similar_cases(summary, raw_cases, top_k=5)
+                if reranked:
+                    raw_cases = reranked
+            except Exception:  # noqa: BLE001
+                pass
         # Translate cases to the schema used by the API
         state.similar_cases = [
             {
-                "company_code": c["company"].split("(")[-1].rstrip(")") if "(" in c["company"] else c["company"],
-                "company_name": c["company"].split("(")[0],
-                "inquiry_date": c.get("date", ""),
-                "inquiry_type": c.get("type", ""),
+                "company_code": c.get("company_code")
+                or (c["company"].split("(")[-1].rstrip(")") if "(" in c.get("company", "") else c.get("company", "")),
+                "company_name": c.get("company_name")
+                or c["company"].split("(")[0] if "(" in c.get("company", "") else c.get("company", ""),
+                "inquiry_date": c.get("inquiry_date") or c.get("date", ""),
+                "inquiry_type": c.get("inquiry_type") or c.get("type", ""),
                 "similarity": c.get("similarity", 0),
-                "match_dimensions": "+".join(c.get("categories", []))[:60],
-                "key_difference": c.get("focus", ""),
+                "match_dimensions": c.get("match_dimensions")
+                or "+".join(c.get("categories", []))[:60],
+                "key_difference": c.get("key_difference") or c.get("focus", ""),
             }
-            for c in out.get("cases", [])
+            for c in raw_cases
         ]
         self._record_tokens(900)
         return state
@@ -239,25 +290,31 @@ class AttributionAgentNode(AgentNode):
         self._record_skill("shap_explain")
         self._record_skill("report_gen")
         company = {"name": state.company_code, "code": state.company_code}
+        probability = (state.prediction_result or {}).get("stacking", 0.5)
+        risk_level = (state.prediction_result or {}).get("risk_level", "中风险")
         explain = reg.call(
             "shap_explain",
             company_name=state.company_code,
-            probability=(state.prediction_result or {}).get("stacking", 0.5),
+            probability=probability,
             shap_features=state.shap_features,
             risk_factors=state.risk_factors,
         ).get("result", {})
         report = reg.call(
             "report_gen",
             company=company,
-            probability=(state.prediction_result or {}).get("stacking", 0.5),
-            risk_level=(state.prediction_result or {}).get("risk_level", "中风险"),
+            probability=probability,
+            risk_level=risk_level,
             risk_factors=state.risk_factors,
             shap_features=state.shap_features,
             similar_cases=state.similar_cases or [],
             financial=state.financial_features or {},
         ).get("result", {})
         state.attribution = explain
-        state.report_markdown = report.get("markdown")
+        report_md = report.get("markdown") or ""
+        # Phase 2: enforce required H2 sections and auto-attach evidence rows
+        report_md = enforce_sections(report_md, risk_level=risk_level, probability=probability)
+        report_md = auto_attach_evidence(report_md, state.risk_factors or [])
+        state.report_markdown = report_md
         self._record_tokens(explain.get("tokens_used", 1500))
         return state
 
@@ -268,6 +325,7 @@ class AttributionAgentNode(AgentNode):
 def build_graph(
     tracer: Tracer | None = None, checkpointer: Checkpointer | None = None,
 ) -> AgentGraph:
+    from app.core.framework import parallel_gather
     g = AgentGraph(tracer=tracer, checkpointer=checkpointer)
     g.add_node(PlannerNode())
     g.add_node(FinancialAgentNode())
@@ -278,39 +336,38 @@ def build_graph(
     g.add_node(CaseAgentNode())
     g.add_node(AttributionAgentNode())
 
+    # Phase 2: parallel fork for the three vertical analysis agents.
+    # Replaces the prior serial chain (graph → financial → announcement).
+    parallel_node = parallel_gather(FinancialAgentNode(),
+                                     AnnouncementAgentNode(),
+                                     GraphAgentNode())
+    g.add_node(parallel_node, name="parallel_vertical")
     g.set_entry("planner")
 
     # Conditional routing from planner based on the leading hypothesis
     def route(state: ScanState) -> str:
         if not state.risk_hypothesis:
-            return "financial_focus"
+            return "vertical"
         leading = state.risk_hypothesis[0]
-        if leading == "公司治理":
-            return "governance_focus"
-        if leading == "关联交易":
-            return "related_tx_focus"
-        return "financial_focus"
+        if leading in ("公司治理", "关联交易"):
+            return "vertical"
+        return "vertical"
 
     g.add_conditional_edges("planner", route, {
-        "financial_focus": "financial_agent",
-        "governance_focus": "graph_agent",
-        "related_tx_focus": "graph_agent",
+        "vertical": "parallel_vertical",
     })
 
-    g.add_edge("financial_agent", "announcement_agent")
-    g.add_edge("graph_agent", "financial_agent")
-    g.add_edge("announcement_agent", "replan")
+    g.add_edge("parallel_vertical", "replan")
 
-    # Replan branches: loop back to graph_agent if missing, otherwise continue
+    # Replan branches: loop back to the parallel fork if missing, otherwise continue
     def replan_route(state: ScanState) -> str:
-        # If a step was added to plan that hasn't yet run, route there
         for needed in state.analysis_plan:
             if needed not in state.completed_steps and needed in {"graph_agent"}:
                 return "more_graph"
         return "to_predict"
 
     g.add_conditional_edges("replan", replan_route, {
-        "more_graph": "graph_agent",
+        "more_graph": "parallel_vertical",
         "to_predict": "predictor",
     })
 

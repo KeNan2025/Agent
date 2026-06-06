@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Query
 
 from app.agents.orchestrator import run_scan_async
 from app.core.framework import Checkpointer, Tracer
+from app.core.logging import get_logger
+from app.core.framework import Checkpointer, Tracer
 from app.features.engineer import FeatureEngineer
 from app.graph import get_graph
 from app.ml.training import get_or_train
@@ -26,58 +28,55 @@ router = APIRouter(prefix="/api/v1", tags=["scan"])
 # Shared singletons
 _TRACER = Tracer()
 _CHECKPOINTER = Checkpointer()
+log = get_logger(__name__)
 
 
 def _ml_predict(
     company: CompanyInfo, fin: FinancialFeatures, risk_factors: list[RiskFactor],
 ) -> dict[str, float] | None:
-    """Run the trained ensemble on the engineered feature vector."""
+    """Run the trained ensemble on the engineered feature vector.
+
+    Phase 3: also returns real SHAP values (top-k) so the API response
+    carries them straight through.
+    """
     try:
         model = get_or_train()
         eng = FeatureEngineer()
         graph_metrics = get_graph().metrics_for(company.code).to_feature_dict()
         vec = eng.build_vector(company, fin, risk_factors, history=None, graph_metrics=graph_metrics)
-        return model.predict_one(vec)
+        out = model.predict_one(vec)
+        try:
+            from app.ml.shap_explainer import explain_one
+            sh = explain_one(model, vec, eng.FEATURE_NAMES, top_k=20)
+            out = {**out, "shap_features": sh}
+        except Exception:  # noqa: BLE001
+            pass
+        return out
     except Exception as exc:
         # Predictor unavailable — fall back to the seed probability
-        print(f"[ml] predict failed, falling back: {exc}")
+        from app.core.logging import get_logger
+        get_logger(__name__).warning("ml.predict_fallback", error=str(exc))
         return None
 
 
-async def _persist_scan(
-    final_state, probability: float, risk_level: str,
-) -> None:
-    from app.database.session import async_session
-    from app.database.models import ScanRecord, TraceLog
-    try:
-        async with async_session() as session:
-            async with session.begin():
-                scan = ScanRecord(
-                    scan_id=final_state.scan_id,
-                    company_code=final_state.company_code,
-                    window_days=final_state.window_days,
-                    probability=probability,
-                    risk_level=risk_level,
-                    risk_hypothesis=final_state.risk_hypothesis,
-                    analysis_plan=str(final_state.analysis_plan),
-                    full_state=final_state.model_dump(mode="json"),
-                )
-                session.add(scan)
-                for ev in final_state.trace_events:
-                    d = ev.model_dump()
-                    session.add(TraceLog(
-                        scan_id=final_state.scan_id,
-                        event_id=d.get("event_id", ""),
-                        node_name=d.get("node_name", ""),
-                        action=d.get("action", ""),
-                        input_summary=d.get("input_summary", ""),
-                        output_summary=d.get("output_summary", ""),
-                        skills_called=str(d.get("skills_called", [])),
-                        duration_ms=d.get("duration_ms", 0),
-                        tokens_used=d.get("tokens_used", 0),
-                    ))
-    except Exception as exc:
-        print(f"[persist] scan persistence skipped: {exc}")
+async def _persist_scan_via_service(final_state, probability: float, risk_level: str) -> None:
+    """Phase 2: transactionally persist via ScanService.
+
+    The service handles shape check, evidence auto-attach, and a single
+    DB transaction (no fire-and-forget). Crashes mid-scan leave no half rows.
+    """
+    from app.services.scan_service import ScanService
+    svc = ScanService(tracer=_TRACER, checkpointer=_CHECKPOINTER)
+    await svc.run_single(
+        scan_id=final_state.scan_id,
+        company_code=final_state.company_code,
+        window_days=final_state.window_days,
+        probability=probability,
+        risk_level=risk_level,
+        risk_hypothesis=final_state.risk_hypothesis,
+        analysis_plan=final_state.analysis_plan,
+        state=final_state,
+    )
 
 
 @router.post("/scan/single", response_model=PredictionResult)
@@ -138,8 +137,49 @@ async def scan_single(req: ScanRequest):
     total_time = sum(s.duration_ms for s in agent_trace)
     report_md = final_state.report_markdown or seed["report_markdown"]
 
-    # Persist scan + trace asynchronously
-    asyncio.create_task(_persist_scan(final_state, probability, risk_level.value))
+    # Persist scan + trace transactionally via ScanService (Phase 2)
+    await _persist_scan_via_service(final_state, probability, risk_level.value)
+
+    # Phase 4: record an experience_event so the scheduler can verify the
+    # prediction against the actual inquiry history once the window closes.
+    try:
+        from datetime import date as _date
+        from app.services.experience_review import record_pending
+        await record_pending(
+            scan_id=final_state.scan_id,
+            company_code=req.company_code,
+            window_days=req.window_days,
+            scan_date=_date.today(),
+            predicted_probability=probability,
+            predicted_risk_level=risk_level.value,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("scan.experience_record_failed", error=str(exc))
+
+    # Phase 4: publish the final trace event to Redis/in-memory pubsub so
+    # connected WebSocket clients (if any) get the closing event.
+    try:
+        from app.services.pubsub import get_pubsub
+        pubsub = get_pubsub()
+        for ev in final_state.trace_events[-3:]:
+            await pubsub.publish(f"scan:{final_state.scan_id}", {
+                "type": "trace",
+                "scan_id": final_state.scan_id,
+                "node_name": ev.node_name,
+                "action": ev.action,
+                "output_summary": ev.output_summary,
+                "duration_ms": ev.duration_ms,
+                "tokens_used": ev.tokens_used,
+                "ts": ev.timestamp,
+            })
+        await pubsub.publish(f"scan:{final_state.scan_id}", {
+            "type": "scan_complete",
+            "scan_id": final_state.scan_id,
+            "risk_level": risk_level.value,
+            "probability": probability,
+        })
+    except Exception as exc:  # noqa: BLE001
+        log.debug("scan.pubsub_publish_skipped", error=str(exc))
 
     return PredictionResult(
         company=company,

@@ -1,0 +1,45 @@
+# LiteLLM Gateway configuration.
+# Routes all LLM traffic through a unified endpoint with rate limits, retries,
+# cost tracking, and authentication.
+#
+# `backend/app/core/llm.py` targets this service via LLM_BASE_URL.
+#
+# Reference: https://docs.litellm.ai/docs/proxy/configs
+
+model_list:
+  - model_name: qwen-plus
+    litellm_params:
+      model: openai/qwen-plus
+      api_key: os.environ/QWEN_API_KEY
+      api_base: https://dashscope.aliyuncs.com/compatible-mode/v1
+    rpm: 500
+    tpm: 200000
+
+  - model_name: gpt-4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+    rpm: 200
+    tpm: 100000
+
+  - model_name: deepseek-chat
+    litellm_params:
+      model: openai/deepseek-chat
+      api_key: os.environ/DEEPSEEK_API_KEY
+      api_base: https://api.deepseek.com/v1
+    rpm: 300
+    tpm: 150000
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  request_timeout: 60
+  telemetry: false
+  success_callback: ["langfuse"]   # optional, see https://docs.litellm.ai/docs/observability
+  failure_callback: ["langfuse"]
+
+router_settings:
+  num_retries: 2
+  timeout: 60
+  allowed_fails: 3
+  cooldown_time: 30

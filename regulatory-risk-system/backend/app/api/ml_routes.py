@@ -3,10 +3,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
+from app.core.logging import get_logger
 from app.ml.training import MODEL_PATH, get_or_train, train_and_persist
+
+log = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/ml", tags=["ml"])
 
@@ -35,6 +38,26 @@ async def metrics() -> dict[str, Any]:
         "n_features": len(ens.feature_names),
         "metrics": ens.metrics.__dict__,
     }
+
+
+@router.get("/metrics/competition")
+async def metrics_competition(train_cutoff: str = "2023-12-31") -> dict[str, Any]:
+    """Phase 3: competition-grade metrics (AUC / F1 / Top-10% recall).
+
+    Runs `training_v2.train_and_persist_v2` which:
+    - loads the time-ordered ground truth under data/competition/
+    - splits by `train_cutoff`
+    - trains the ensemble on the train split
+    - reports AUC-ROC, F1, optimal threshold, and Top-10% recall on the
+      test split.
+    """
+    try:
+        from app.ml.training_v2 import train_and_persist_v2
+        report = train_and_persist_v2(train_cutoff=train_cutoff)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("ml.metrics_competition_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return report
 
 
 @router.get("/feature-importance")

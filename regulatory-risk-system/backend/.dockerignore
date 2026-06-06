@@ -1,0 +1,31 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+
+# Local data and secrets
+.env
+data/
+*.db
+*.sqlite
+*.sqlite3
+postgres-data/
+redis-data/
+pgdata/
+
+# Tests / IDE
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.idea/
+.vscode/
+
+# Distribution
+build/
+dist/
+*.egg-info/
