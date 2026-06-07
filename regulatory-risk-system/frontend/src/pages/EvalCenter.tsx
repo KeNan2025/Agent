@@ -1,15 +1,26 @@
 import { useState } from 'react';
 import {
-  Card, Button, Table, Input, Tabs, Spin, Tag, Row, Col, Statistic, Alert, Space,
+  Card, Button, Table, Input, Tabs, Spin, Tag, Row, Col, Statistic, Alert, Space, message,
 } from 'antd';
 import {
   ExperimentOutlined, ThunderboltOutlined, TrophyOutlined,
-  CheckCircleOutlined, CloseCircleOutlined,
+  CheckCircleOutlined, CloseCircleOutlined, FileSearchOutlined,
 } from '@ant-design/icons';
-import { evalAblation, evalBaseline, evalJudge } from '../api/client';
-import type { AblationResult, BaselineResult, JudgeResult } from '../types';
+import {
+  evalAblation, evalBaseline, evalJudge,
+  evalEvidenceRecall, evalFocusAccuracy, evalCaseTopK,
+} from '../api/client';
+import type {
+  AblationResult, BaselineResult, JudgeResult,
+  EvidenceRecallResult, FocusClassificationResult, CaseTopKResult,
+} from '../types';
 import StatCard from '../components/StatCard';
+import MetricGate from '../components/MetricGate';
 import PageTitle from '../components/PageTitle';
+
+function safeParseJson<T>(text: string, fallback: T): T {
+  try { return JSON.parse(text); } catch { return fallback; }
+}
 
 export default function EvalCenter() {
   const [tab, setTab] = useState('ablation');
@@ -20,6 +31,70 @@ export default function EvalCenter() {
   const [judgeCode, setJudgeCode] = useState('600000');
   const [judgeLoading, setJudgeLoading] = useState(false);
   const [judgeResult, setJudgeResult] = useState<JudgeResult | null>(null);
+
+  // ── Phase 3: 赛题三项细评估 ──
+  const [evidencePred, setEvidencePred] = useState('[{"evidence_quote":"应收账款大幅增长"}]');
+  const [evidenceGold, setEvidenceGold] = useState('[{"evidence_quote":"应收账款增长 45%"}]');
+  const [evidenceResult, setEvidenceResult] = useState<EvidenceRecallResult | null>(null);
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
+
+  const [focusPred, setFocusPred] = useState('[{"category":"财务异常","subcategory":"收入确认异常"}]');
+  const [focusGold, setFocusGold] = useState('[{"category":"财务异常","subcategory":"收入确认异常"}]');
+  const [focusResult, setFocusResult] = useState<FocusClassificationResult | null>(null);
+  const [focusLoading, setFocusLoading] = useState(false);
+
+  const [casePred, setCasePred] = useState('["600519","000001","002271","600036","601318"]');
+  const [caseGold, setCaseGold] = useState('["600519"]');
+  const [caseTopK, setCaseTopK] = useState(5);
+  const [caseResult, setCaseResult] = useState<CaseTopKResult | null>(null);
+  const [caseLoading, setCaseLoading] = useState(false);
+
+  const runEvidenceRecall = async () => {
+    setEvidenceLoading(true);
+    try {
+      const r = await evalEvidenceRecall(
+        safeParseJson(evidencePred, []),
+        safeParseJson(evidenceGold, []),
+        0.5,
+      );
+      setEvidenceResult(r);
+    } catch (e: any) {
+      message.error('评估失败：' + (e?.response?.data?.detail ?? e?.message ?? ''));
+    } finally {
+      setEvidenceLoading(false);
+    }
+  };
+
+  const runFocusAccuracy = async () => {
+    setFocusLoading(true);
+    try {
+      const r = await evalFocusAccuracy(
+        safeParseJson(focusPred, []),
+        safeParseJson(focusGold, []),
+      );
+      setFocusResult(r);
+    } catch (e: any) {
+      message.error('评估失败：' + (e?.response?.data?.detail ?? e?.message ?? ''));
+    } finally {
+      setFocusLoading(false);
+    }
+  };
+
+  const runCaseTopK = async () => {
+    setCaseLoading(true);
+    try {
+      const r = await evalCaseTopK(
+        safeParseJson(casePred, []),
+        safeParseJson(caseGold, []),
+        caseTopK,
+      );
+      setCaseResult(r);
+    } catch (e: any) {
+      message.error('评估失败：' + (e?.response?.data?.detail ?? e?.message ?? ''));
+    } finally {
+      setCaseLoading(false);
+    }
+  };
 
   const runAblation = async () => {
     setAblLoading(true);
@@ -298,6 +373,126 @@ export default function EvalCenter() {
                   )}
                 </Spin>
               </Card>
+            ),
+          },
+          {
+            key: 'competition-detail',
+            label: <><FileSearchOutlined /> 赛题细评估</>,
+            children: (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <Alert
+                  type="info" showIcon
+                  message="赛题三项细分指标"
+                  description="证据片段召回 ≥ 85% · 关注点分类准确率 ≥ 80% · 案例 Top-5 命中率 ≥ 70%。输入预测结果与 gold 标注（JSON 格式），后端按相同口径计算评估结果。"
+                />
+
+                {/* 证据召回 */}
+                <Card
+                  title={<Space><FileSearchOutlined style={{ color: 'var(--warning)' }} /><span style={{ fontWeight: 600 }}>关键证据片段召回</span></Space>}
+                  extra={
+                    <Button type="primary" onClick={runEvidenceRecall} loading={evidenceLoading} icon={<ThunderboltOutlined />}>
+                      评估
+                    </Button>
+                  }
+                >
+                  <Row gutter={12}>
+                    <Col xs={24} sm={12}>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 4 }}>predictions (JSON)</div>
+                      <Input.TextArea rows={4} value={evidencePred} onChange={(e) => setEvidencePred(e.target.value)} />
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 4 }}>gold (JSON)</div>
+                      <Input.TextArea rows={4} value={evidenceGold} onChange={(e) => setEvidenceGold(e.target.value)} />
+                    </Col>
+                  </Row>
+                  {evidenceResult && (
+                    <div style={{ marginTop: 16 }}>
+                      <Row gutter={12}>
+                        <Col xs={12} sm={8}>
+                          <MetricGate label="召回率" value={evidenceResult.recall} target={0.85} format="percent" />
+                        </Col>
+                        <Col xs={12} sm={8}>
+                          <StatCard title="匹配数" value={evidenceResult.matched} color="green" size="small" />
+                        </Col>
+                        <Col xs={12} sm={8}>
+                          <StatCard title="gold 数" value={evidenceResult.total_gold} color="blue" size="small" />
+                        </Col>
+                      </Row>
+                    </div>
+                  )}
+                </Card>
+
+                {/* 关注点分类 */}
+                <Card
+                  title={<Space><FileSearchOutlined style={{ color: 'var(--purple)' }} /><span style={{ fontWeight: 600 }}>监管关注点分类</span></Space>}
+                  extra={
+                    <Button type="primary" onClick={runFocusAccuracy} loading={focusLoading} icon={<ThunderboltOutlined />}>
+                      评估
+                    </Button>
+                  }
+                >
+                  <Row gutter={12}>
+                    <Col xs={24} sm={12}>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 4 }}>predictions (JSON)</div>
+                      <Input.TextArea rows={4} value={focusPred} onChange={(e) => setFocusPred(e.target.value)} />
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 4 }}>gold (JSON)</div>
+                      <Input.TextArea rows={4} value={focusGold} onChange={(e) => setFocusGold(e.target.value)} />
+                    </Col>
+                  </Row>
+                  {focusResult && (
+                    <div style={{ marginTop: 16 }}>
+                      <Row gutter={12}>
+                        <Col xs={12} sm={8}>
+                          <MetricGate label="准确率" value={focusResult.accuracy} target={0.8} format="percent" />
+                        </Col>
+                        <Col xs={12} sm={8}>
+                          <StatCard title="匹配数" value={focusResult.matched} color="green" size="small" />
+                        </Col>
+                        <Col xs={12} sm={8}>
+                          <StatCard title="gold 数" value={focusResult.total_gold} color="blue" size="small" />
+                        </Col>
+                      </Row>
+                    </div>
+                  )}
+                </Card>
+
+                {/* 案例 Top-K */}
+                <Card
+                  title={<Space><FileSearchOutlined style={{ color: 'var(--cyan)' }} /><span style={{ fontWeight: 600 }}>相似案例 Top-K 命中</span></Space>}
+                  extra={
+                    <Button type="primary" onClick={runCaseTopK} loading={caseLoading} icon={<ThunderboltOutlined />}>
+                      评估
+                    </Button>
+                  }
+                >
+                  <Row gutter={12}>
+                    <Col xs={24} sm={10}>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 4 }}>predicted_case_codes (JSON list)</div>
+                      <Input.TextArea rows={3} value={casePred} onChange={(e) => setCasePred(e.target.value)} />
+                    </Col>
+                    <Col xs={24} sm={10}>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 4 }}>gold_case_codes (JSON list)</div>
+                      <Input.TextArea rows={3} value={caseGold} onChange={(e) => setCaseGold(e.target.value)} />
+                    </Col>
+                    <Col xs={24} sm={4}>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)', marginBottom: 4 }}>K</div>
+                      <Input type="number" value={caseTopK} onChange={(e) => setCaseTopK(Number(e.target.value) || 5)} />
+                    </Col>
+                  </Row>
+                  {caseResult && (
+                    <div style={{ marginTop: 16 }}>
+                      <Tag color={caseResult.hit ? 'green' : 'red'} icon={caseResult.hit ? <CheckCircleOutlined /> : <CloseCircleOutlined />}>
+                        {caseResult.hit ? `Top-${caseResult.top_k} 命中` : `Top-${caseResult.top_k} 未命中`}
+                      </Tag>
+                      <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-dim)' }}>
+                        预测：{caseResult.predicted.join(', ')} · gold：{caseResult.gold.join(', ')}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </div>
             ),
           },
         ]}

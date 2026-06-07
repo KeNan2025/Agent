@@ -52,6 +52,9 @@ class RedisPubSub:
             raise RuntimeError("redis not installed")
         self.url = url
         self._client: Any | None = None
+        # Keep strong references to relay tasks so they don't get GC'd
+        # mid-flight (which can happen if the caller drops the queue ref).
+        self._relay_tasks: set[asyncio.Task] = set()
 
     async def _get(self) -> Any:
         if self._client is None:
@@ -81,14 +84,21 @@ class RedisPubSub:
                     except Exception:
                         continue
                     await q.put(data)
-            except asyncio.CancelledError:  # noqa: PERF203
+            except asyncio.CancelledError:
                 pass
             finally:
                 with __import__("contextlib").suppress(Exception):
                     await pubsub.unsubscribe(channel)
                     await pubsub.close()
         t = asyncio.create_task(relay())
+        self._relay_tasks.add(t)
+        t.add_done_callback(self._relay_tasks.discard)
         return q
+
+    async def unsubscribe(self, channel: str, q: asyncio.Queue) -> None:
+        # The relay task owns pubsub.unsubscribe; cancelling it will
+        # trigger the `finally` cleanup.
+        pass
 
 
 def _build_pubsub() -> Any:

@@ -10,7 +10,6 @@ from fastapi import APIRouter, HTTPException, Query
 from app.agents.orchestrator import run_scan_async
 from app.core.framework import Checkpointer, Tracer
 from app.core.logging import get_logger
-from app.core.framework import Checkpointer, Tracer
 from app.features.engineer import FeatureEngineer
 from app.graph import get_graph
 from app.ml.training import get_or_train
@@ -46,8 +45,9 @@ def _ml_predict(
         vec = eng.build_vector(company, fin, risk_factors, history=None, graph_metrics=graph_metrics)
         out = model.predict_one(vec)
         try:
+            from app.features.engineer import FEATURE_NAMES
             from app.ml.shap_explainer import explain_one
-            sh = explain_one(model, vec, eng.FEATURE_NAMES, top_k=20)
+            sh = explain_one(model, vec, FEATURE_NAMES, top_k=20)
             out = {**out, "shap_features": sh}
         except Exception:  # noqa: BLE001
             pass
@@ -80,7 +80,51 @@ async def _persist_scan_via_service(final_state, probability: float, risk_level:
 
 
 @router.post("/scan/single", response_model=PredictionResult)
-async def scan_single(req: ScanRequest):
+async def scan_single(req: ScanRequest, async_mode: bool = Query(False)):
+    """Run a single-company scan.
+
+    `async_mode=true` submits the scan to the in-process `AsyncTaskRunner`
+    and returns immediately with a `task_id`. The client then connects
+    via `GET /api/v1/tasks/{task_id}` (status) or
+    `WebSocket /ws/scan/{scan_id}?ticket=...` (live trace) for progress.
+    """
+    if async_mode:
+        from app.services.async_task_runner import get_task_runner
+        runner = get_task_runner()
+
+        async def _run() -> dict[str, Any]:
+            result = await _run_scan_inline(req)
+            return {
+                "company_code": req.company_code,
+                "probability": result.inquiry_probability,
+                "risk_level": result.risk_level.value,
+            }
+        task_id = await runner.submit(
+            _run, kind="scan", input_payload={
+                "company_code": req.company_code,
+                "window_days": req.window_days,
+            },
+        )
+        return PredictionResult(
+            company=CompanyInfo(code=req.company_code, name=req.company_code,
+                                industry="", market_cap=0.0),
+            inquiry_probability=0.0,
+            risk_level=RiskLevel.LOW,
+            confidence=0.0,
+            window_days=req.window_days,
+            risk_factors=[],
+            shap_features=[],
+            similar_cases=[],
+            agent_trace=[],
+            report_markdown=f"任务已入队，task_id={task_id}",
+            analysis_time_ms=0,
+            llm_calls=0,
+            total_tokens=0,
+        )
+    return await _run_scan_inline(req)
+
+
+async def _run_scan_inline(req: ScanRequest) -> PredictionResult:
     seed = get_full_prediction(req.company_code, req.window_days)
     if seed is None:
         raise HTTPException(status_code=404, detail=f"公司 {req.company_code} 未找到")
@@ -100,6 +144,13 @@ async def scan_single(req: ScanRequest):
             RiskLevel.HIGH if probability >= 0.6 else
             RiskLevel.MEDIUM if probability >= 0.3 else RiskLevel.LOW
         )
+        if "shap_features" in ml and ml["shap_features"]:
+            # Replace the seed (mock) SHAP with real values
+            from app.models.schemas import ShapFeature as SchemaShap
+            try:
+                shap_features = [SchemaShap(**s) for s in ml["shap_features"][:10]]
+            except Exception:  # noqa: BLE001
+                pass
 
     # Run the dynamic-planning agent graph
     final_state = await run_scan_async(
@@ -156,8 +207,7 @@ async def scan_single(req: ScanRequest):
     except Exception as exc:  # noqa: BLE001
         log.warning("scan.experience_record_failed", error=str(exc))
 
-    # Phase 4: publish the final trace event to Redis/in-memory pubsub so
-    # connected WebSocket clients (if any) get the closing event.
+    # Phase 4: publish trace events to pubsub for connected WS clients
     try:
         from app.services.pubsub import get_pubsub
         pubsub = get_pubsub()
@@ -200,24 +250,31 @@ async def scan_single(req: ScanRequest):
 
 @router.post("/scan/batch")
 async def scan_batch(req: BatchScanRequest):
-    results = []
-    for code in req.company_codes:
-        r = get_full_prediction(code, req.window_days)
-        if not r:
-            continue
-        ml = _ml_predict(r["company"], r["financial"], r["risk_factors"])
-        prob = float(ml["stacking"]) if ml and "stacking" in ml else r["probability"]
-        risk_level = (
-            RiskLevel.HIGH if prob >= 0.6 else
-            RiskLevel.MEDIUM if prob >= 0.3 else RiskLevel.LOW
-        )
-        results.append({
-            "company_code": code,
-            "company_name": r["company"].name,
-            "inquiry_probability": prob,
-            "risk_level": risk_level.value,
-            "top_risk_factor": r["risk_factors"][0].subcategory if r["risk_factors"] else "无",
-        })
+    """Parallel batch scan with concurrency cap (Semaphore from settings)."""
+    from app.settings import settings as _settings
+    sem = asyncio.Semaphore(_settings.async_task_max_concurrent)
+
+    async def _one(code: str) -> dict[str, Any] | None:
+        async with sem:
+            r = get_full_prediction(code, req.window_days)
+            if not r:
+                return None
+            ml = _ml_predict(r["company"], r["financial"], r["risk_factors"])
+            prob = float(ml["stacking"]) if ml and "stacking" in ml else r["probability"]
+            risk_level = (
+                RiskLevel.HIGH if prob >= 0.6 else
+                RiskLevel.MEDIUM if prob >= 0.3 else RiskLevel.LOW
+            )
+            return {
+                "company_code": code,
+                "company_name": r["company"].name,
+                "inquiry_probability": prob,
+                "risk_level": risk_level.value,
+                "top_risk_factor": r["risk_factors"][0].subcategory if r["risk_factors"] else "无",
+            }
+
+    raw = await asyncio.gather(*(_one(c) for c in req.company_codes))
+    results = [r for r in raw if r is not None]
     results.sort(key=lambda x: -x["inquiry_probability"])
     return {"total": len(results), "results": results}
 

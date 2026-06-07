@@ -169,13 +169,25 @@ export default function SkillFiles() {
     }
     setUploading(true);
     try {
-      await uploadSkillFile(uploadFile, uploadSkillName, uploadDesc);
-      message.success('上传成功');
+      const resp = await uploadSkillFile(uploadFile, uploadSkillName, uploadDesc);
+      // Phase 5: backend now reports whether the file was registered as a
+      // sandboxed Skill. Surface that to the user so they know if the
+      // Skill is callable from MCP.
+      if (resp.registered_as_skill) {
+        message.success('上传成功，已注册为可调用 Skill（沙箱已启用）');
+      } else if (resp.register_error) {
+        message.warning(`上传成功，但 Skill 注册失败：${resp.register_error}`);
+      } else if (uploadSkillName) {
+        message.info('上传成功（Skill 已存在或无 skill.json 描述，未重新注册）');
+      } else {
+        message.success('文件已上传');
+      }
       setUploadOpen(false);
       setUploadFile(null);
       setUploadSkillName(undefined);
       setUploadDesc('');
       fetchFiles();
+      fetchSkills();
     } catch (e: any) {
       message.error('上传失败: ' + (e?.message ?? e));
     }

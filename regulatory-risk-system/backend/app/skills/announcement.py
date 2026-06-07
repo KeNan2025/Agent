@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.llm import get_llm_client
+from app.core.llm import complete_sync, get_llm_client
 from app.core.skill import skill
 from app.retrieval import get_announcement_index
 
@@ -69,7 +69,7 @@ def text_extract(text: str, hypothesis: str = "") -> dict[str, Any]:
         f"风险假设：{hypothesis}\n"
         f"文本：\n{text}\n"
     )
-    resp = client.complete(prompt + "\n请用'extract'结构化输出：")
+    resp = complete_sync(client, prompt + "\n请用'extract'结构化输出：")
     try:
         parsed = resp.parse_json()
     except Exception:

@@ -30,9 +30,12 @@ async_session = async_sessionmaker(
 
 
 async def init_db() -> None:
-    """Create all tables (idempotent — Alembic is the source of truth in prod)."""
-    # Import observability models so Base.metadata knows about them
-    import app.database.models_observability  # noqa: F401
+    """Create all tables (idempotent — Alembic is the source of truth in prod).
+
+    `app.database.__init__` already eagerly imports models_observability /
+    models_tasks / models_users so every Base subclass is registered with
+    Base.metadata by the time we reach this call.
+    """
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 

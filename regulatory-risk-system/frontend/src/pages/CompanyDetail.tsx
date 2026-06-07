@@ -18,6 +18,7 @@ import { scanSingle, getFinancial, getGraph, getReportDownloadUrl } from '../api
 import type { ScanResult, ShapFeature, RiskFactor, SimilarCase, TraceStep, FinancialData, GraphNode, GraphLink, GraphMetrics } from '../types';
 import RiskBadge from '../components/RiskBadge';
 import StatCard from '../components/StatCard';
+import EvidencePanel from '../components/EvidencePanel';
 
 const severityColor: Record<string, string> = {
   '高': 'red', '中': 'orange', '低': 'green',
@@ -227,6 +228,11 @@ export default function CompanyDetail() {
             key: 'risk',
             label: <Space size={4}><WarningOutlined />风险因素</Space>,
             children: <RiskFactorsPanel factors={data.risk_factors} />,
+          },
+          {
+            key: 'evidence',
+            label: <Space size={4}><FileTextOutlined />原文证据</Space>,
+            children: <EvidencePanel riskFactors={data.risk_factors as any} />,
           },
           {
             key: 'financial',

@@ -1,21 +1,24 @@
 import { useEffect, useState } from 'react';
 import {
-  Card, Row, Col, Button, Spin, Table, Tag, Alert, Descriptions, Space, Progress,
+  Card, Row, Col, Button, Spin, Table, Tag, Alert, Descriptions, Space, message,
 } from 'antd';
 import {
   ThunderboltOutlined, ExperimentOutlined, FundOutlined,
-  BarChartOutlined, ReloadOutlined,
+  BarChartOutlined, ReloadOutlined, RocketOutlined,
 } from '@ant-design/icons';
-import { mlMetrics, mlFeatureImportance, mlTrain } from '../api/client';
-import type { MlMetricsData, FeatureImportance } from '../types';
+import { mlMetrics, mlFeatureImportance, mlTrain, mlMetricsCompetition } from '../api/client';
+import type { MlMetricsData, FeatureImportance, CompetitionMetricsReport } from '../types';
 import StatCard from '../components/StatCard';
+import CompetitionTargets from '../components/CompetitionTargets';
 import PageTitle from '../components/PageTitle';
 
 export default function MlMetrics() {
   const [metrics, setMetrics] = useState<MlMetricsData | null>(null);
   const [importance, setImportance] = useState<FeatureImportance[]>([]);
+  const [comp, setComp] = useState<CompetitionMetricsReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [training, setTraining] = useState(false);
+  const [compLoading, setCompLoading] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -32,6 +35,18 @@ export default function MlMetrics() {
     await mlTrain(200);
     setTraining(false);
     refresh();
+  };
+
+  const runCompetition = async () => {
+    setCompLoading(true);
+    try {
+      const r = await mlMetricsCompetition('2023-12-31');
+      setComp(r);
+    } catch (e: any) {
+      message.error('赛题指标计算失败：' + (e?.response?.data?.detail ?? e?.message ?? ''));
+    } finally {
+      setCompLoading(false);
+    }
   };
 
   const maxImportance = importance.length > 0
@@ -53,6 +68,43 @@ export default function MlMetrics() {
           }
         />
 
+        {/* ── 赛题硬指标 (Phase 3) ── */}
+        <Card
+          style={{ marginBottom: 20 }}
+          title={
+            <Space>
+              <RocketOutlined style={{ color: 'var(--primary)' }} />
+              <span style={{ fontWeight: 600 }}>赛题硬指标 — 时间切分验证</span>
+              {comp && (
+                <Tag color="blue">训练 {comp.train_size} · 测试 {comp.test_size}</Tag>
+              )}
+            </Space>
+          }
+          extra={
+            <Button
+              type="primary"
+              icon={<RocketOutlined />}
+              loading={compLoading}
+              onClick={runCompetition}
+            >
+              {comp ? '重新计算' : '计算赛题指标'}
+            </Button>
+          }
+        >
+          {comp ? (
+            <CompetitionTargets
+              aucRoc={comp.metrics.auc_roc}
+              f1={comp.metrics.f1_optimal_threshold}
+              top10Recall={comp.metrics.top_10pct_recall}
+            />
+          ) : (
+            <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-dim)' }}>
+              点击右上角按钮，按 train_cutoff=2023-12-31 切分后计算 AUC / F1 / Top-10% 召回
+            </div>
+          )}
+        </Card>
+
+        {/* ── 模型整体指标 ── */}
         <Row gutter={[16, 16]} className="stat-row" style={{ marginBottom: 20 }}>
           <Col xs={12} sm={6}>
             <StatCard title="特征维度" value={metrics?.n_features ?? 0} color="purple" icon={<ThunderboltOutlined />} />

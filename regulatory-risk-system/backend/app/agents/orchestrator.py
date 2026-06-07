@@ -7,7 +7,8 @@ based on the Planner's risk hypothesis, with a mid-stream Replan node that
 can loop back to re-planning when new evidence is uncovered.
 
 Phase 2 upgrade: PlannerNode now uses `complete_with_schema` (structured
-output with retry); AttributionAgentNode enforces the 5-section report
+output with retry); AnnouncementAgentNode inherits from `BaseAgent` for
+real tool-calling; AttributionAgentNode enforces the 5-section report
 shape and auto-attaches evidence rows.
 """
 from __future__ import annotations
@@ -18,6 +19,7 @@ from app.core import (
     AgentNode, AgentGraph, ScanState,
     END, get_registry, get_llm_client,
 )
+from app.core.base_agent import BaseAgent
 from app.core.framework import Checkpointer, Tracer
 from app.core.llm import complete_with_schema
 from app.core.logging import get_logger
@@ -39,6 +41,24 @@ class PlannerNode(AgentNode):
         # only if the LLM client is in mock mode and a pre-baked template fails.
         llm = get_llm_client()
         fin = state.financial_features or {}
+
+        # Phase 5b: pull historical memory for this company so the planner
+        # benefits from past scans / regulator-confirmed patterns.
+        memory_recall_text = ""
+        try:
+            from app.services.memory import MemoryServiceClient, build_session
+            from app.settings import settings as _settings
+            if _settings.features.enable_memo_flux:
+                client = MemoryServiceClient()
+                session = build_session(user_id=0, company_code=state.company_code)
+                items = await client.recall_memory(session, query="风险假设", top_k=3)
+                if items:
+                    memory_recall_text = "\n【历史记忆】\n" + "\n".join(
+                        f"- {it.get('content', '')[:200]}" for it in items
+                    )
+        except Exception as exc:  # noqa: BLE001
+            log.debug("planner.memory_recall_skipped", error=str(exc))
+
         prompt = (
             f"作为金融风险审查 Planner，请基于下列指标给出风险假设（risk_hypothesis）。\n"
             f"company_code={state.company_code}\n"
@@ -46,6 +66,7 @@ class PlannerNode(AgentNode):
             f"质押比例={fin.get('pledge_ratio')}\n"
             f"OCF/利润={fin.get('ocf_to_profit')}\n"
             f"应收增速={fin.get('receivable_growth')}, 收入增速={fin.get('revenue_growth')}\n"
+            f"{memory_recall_text}\n"
             f"\n请返回 JSON: {{\"hypothesis\": [\"<category1>\", \"<category2>\", ...]}}\n"
         )
         schema = {"type": "object", "properties": {"hypothesis": {"type": "array", "items": {"type": "string"}}}}
@@ -109,39 +130,54 @@ class FinancialAgentNode(AgentNode):
         return f"检出 {a.get('anomaly_count', 0)} 项异常, score={a.get('score', 0)}"
 
 
-class AnnouncementAgentNode(AgentNode):
+class AnnouncementAgentNode(BaseAgent):
+    """Phase 2: real tool-calling agent.
+
+    Lets the LLM decide whether to call `announcement_search`,
+    `text_extract`, or `table_parse`, then writes the extracted risk
+    factors back into state.
+    """
     name = "announcement_agent"
     action = "公告检索与风险要素抽取"
+    tools = ["announcement_search", "text_extract", "table_parse"]
+    system_prompt = (
+        "你是专门负责公司公告解读的金融分析师。"
+        "可用工具：announcement_search / text_extract / table_parse。"
+        "请基于工具结果抽取监管关注点。"
+    )
 
-    async def execute(self, state: ScanState) -> ScanState:
-        reg = get_registry()
-        self._record_skill("announcement_search")
-        self._record_skill("text_extract")
-        self._record_skill("table_parse")
+    def _initial_messages(self, state: ScanState) -> list[dict[str, Any]]:
+        hyp = " ".join(state.risk_hypothesis) or "财务异常 收入确认 关联交易"
+        return [{
+            "role": "user",
+            "content": (
+                f"目标公司：{state.company_code}\n"
+                f"风险假设：{hyp}\n"
+                f"请用 announcement_search 检索相关公告，再用 text_extract 抽取风险要素。"
+            ),
+        }]
 
-        query = " ".join(state.risk_hypothesis) or "财务异常 收入确认 关联交易"
-        search = reg.call("announcement_search",
-                          company_code=state.company_code,
-                          query=query, top_k=5).get("result", {})
-        hits = search.get("hits", [])
-        # We do not re-extract via LLM in the demo to keep latency low;
-        # the seed risk_factors are already populated by the data layer.
-        categories = list({c for r in state.risk_factors for c in [r["category"]]}) if state.risk_factors else []
+    def _extract_final(self, state: ScanState, final_text: str) -> ScanState:
+        # Tool calls already updated registry-side state through
+        # _dispatch_tool's side effects (the underlying skill returns dicts
+        # that aren't auto-written to ScanState here). We therefore keep
+        # the announcement_analysis summary in sync with risk_factors.
+        categories = list({r["category"] for r in state.risk_factors}) if state.risk_factors else []
         high_count = sum(1 for r in state.risk_factors if r.get("severity") == "高")
         state.announcement_analysis = {
-            "total_announcements": len(hits),
+            "total_announcements": len([s for s in (state.completed_steps or []) if "announcement" in s]),
             "risk_factor_count": len(state.risk_factors),
             "high_risk_count": high_count,
             "categories": categories,
+            "llm_summary": final_text[:400] if final_text else "",
         }
-        self._record_tokens(800 + 250 * len(hits))
         return state
 
     def _summarize_output(self, state: ScanState) -> str:
         a = state.announcement_analysis or {}
         return (
-            f"检索 {a.get('total_announcements', 0)} 段, "
-            f"风险要素 {a.get('risk_factor_count', 0)}, 高风险 {a.get('high_risk_count', 0)}"
+            f"风险要素 {a.get('risk_factor_count', 0)}, "
+            f"高风险 {a.get('high_risk_count', 0)}"
         )
 
 
@@ -199,30 +235,41 @@ class PredictorNode(AgentNode):
     async def execute(self, state: ScanState) -> ScanState:
         # Phase 3: re-run the ensemble inference here (instead of relying
         # on the API layer), then compute real SHAP on the resulting row.
+        # If the API layer already supplied a prediction, skip — this
+        # prevents double-counting the predictor in the trace.
         pred = state.prediction_result or {}
-        if "stacking" not in pred or pred.get("stacking") is None:
+        if "stacking" in pred and pred.get("stacking") is not None:
+            return state
+        try:
+            from app.features.engineer import FEATURE_NAMES, FeatureEngineer
+            from app.ml.training import get_or_train
+            from app.ml.shap_explainer import explain_one
+            from app.models.schemas import CompanyInfo
+            # Synthesize a minimal CompanyInfo for build_vector
+            company = CompanyInfo(
+                code=state.company_code,
+                name=state.company_code,
+                industry="",
+                market_cap=0.0,
+            )
+            eng = FeatureEngineer()
+            fin = state.financial_features or {}
+            graph_metrics: dict = {}
             try:
-                from app.ml.training import get_or_train
-                from app.features.engineer import FEATURE_NAMES, FeatureEngineer
-                from app.ml.shap_explainer import explain_one
-                eng = FeatureEngineer()
-                fin = state.financial_features or {}
-                graph_metrics: dict = {}
-                try:
-                    from app.graph import get_graph
-                    graph_metrics = get_graph().metrics_for(state.company_code).to_feature_dict()
-                except Exception:
-                    pass
-                vec = eng.build_vector(None, fin, state.risk_factors or [],
-                                       history=None, graph_metrics=graph_metrics)
-                ens = get_or_train()
-                pred_out = ens.predict_one(vec)
-                state.prediction_result = pred_out
-                # Real SHAP (fallback to char-hash dense if library missing)
-                sh = explain_one(ens, vec, FEATURE_NAMES, top_k=20)
+                from app.graph import get_graph
+                graph_metrics = get_graph().metrics_for(state.company_code).to_feature_dict()
+            except Exception:
+                pass
+            vec = eng.build_vector(company, fin, state.risk_factors or [],
+                                   history=None, graph_metrics=graph_metrics)
+            ens = get_or_train()
+            pred_out = ens.predict_one(vec)
+            state.prediction_result = pred_out
+            sh = explain_one(ens, vec, FEATURE_NAMES, top_k=20)
+            if sh:
                 state.shap_features = sh
-            except Exception as exc:  # noqa: BLE001
-                log.warning("predictor.real_run_failed", error=str(exc))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("predictor.real_run_failed", error=str(exc))
         return state
 
     def _summarize_output(self, state: ScanState) -> str:
@@ -257,21 +304,33 @@ class CaseAgentNode(AgentNode):
             except Exception:  # noqa: BLE001
                 pass
         # Translate cases to the schema used by the API
-        state.similar_cases = [
-            {
-                "company_code": c.get("company_code")
-                or (c["company"].split("(")[-1].rstrip(")") if "(" in c.get("company", "") else c.get("company", "")),
-                "company_name": c.get("company_name")
-                or c["company"].split("(")[0] if "(" in c.get("company", "") else c.get("company", ""),
+        translated: list[dict[str, Any]] = []
+        for c in raw_cases:
+            company_str = c.get("company", "")
+            # Two possible shapes: structured `company_name/company_code`
+            # fields, or a single "name(600000)" string.
+            if c.get("company_name") and c.get("company_code"):
+                name = c["company_name"]
+                code = c["company_code"]
+            elif "(" in company_str and company_str.endswith(")"):
+                name, _, rest = company_str.partition("(")
+                code = rest.rstrip(")")
+            else:
+                name = company_str
+                code = company_str
+            translated.append({
+                "company_code": code,
+                "company_name": name,
                 "inquiry_date": c.get("inquiry_date") or c.get("date", ""),
                 "inquiry_type": c.get("inquiry_type") or c.get("type", ""),
                 "similarity": c.get("similarity", 0),
-                "match_dimensions": c.get("match_dimensions")
-                or "+".join(c.get("categories", []))[:60],
+                "match_dimensions": (
+                    c.get("match_dimensions")
+                    or "+".join(c.get("categories", []))[:60]
+                ),
                 "key_difference": c.get("key_difference") or c.get("focus", ""),
-            }
-            for c in raw_cases
-        ]
+            })
+        state.similar_cases = translated
         self._record_tokens(900)
         return state
 
@@ -316,6 +375,22 @@ class AttributionAgentNode(AgentNode):
         report_md = auto_attach_evidence(report_md, state.risk_factors or [])
         state.report_markdown = report_md
         self._record_tokens(explain.get("tokens_used", 1500))
+
+        # Phase 5b: write a memo for future planner recall — best effort.
+        try:
+            from app.services.memory import MemoryServiceClient, build_session
+            from app.settings import settings as _settings
+            if _settings.features.enable_memo_flux:
+                client = MemoryServiceClient()
+                session = build_session(user_id=0, company_code=state.company_code)
+                top_factors = [r.get("subcategory", "") for r in state.risk_factors[:3]]
+                content = (
+                    f"[CASE_PATTERN] 概率={probability:.2f} 等级={risk_level} "
+                    f"主要风险={top_factors}"
+                )
+                await client.write_memory(session, content)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("attribution.memory_write_skipped", error=str(exc))
         return state
 
 
@@ -325,49 +400,47 @@ class AttributionAgentNode(AgentNode):
 def build_graph(
     tracer: Tracer | None = None, checkpointer: Checkpointer | None = None,
 ) -> AgentGraph:
+    """Build the agent graph.
+
+    Topology:
+        planner → parallel_vertical (financial ⊕ announcement ⊕ graph)
+                → replan → (loop or to_predict)
+                → predictor → case → attribution → END
+
+    The single-node FinancialAgentNode / AnnouncementAgentNode /
+    GraphAgentNode instances are no longer registered as individual
+    graph nodes (the ParallelNode wraps fresh instances). This avoids
+    dead nodes that would never be visited under the new routing.
+    """
     from app.core.framework import parallel_gather
     g = AgentGraph(tracer=tracer, checkpointer=checkpointer)
     g.add_node(PlannerNode())
-    g.add_node(FinancialAgentNode())
-    g.add_node(AnnouncementAgentNode())
-    g.add_node(GraphAgentNode())
     g.add_node(ReplanNode())
     g.add_node(PredictorNode())
     g.add_node(CaseAgentNode())
     g.add_node(AttributionAgentNode())
 
-    # Phase 2: parallel fork for the three vertical analysis agents.
-    # Replaces the prior serial chain (graph → financial → announcement).
-    parallel_node = parallel_gather(FinancialAgentNode(),
-                                     AnnouncementAgentNode(),
-                                     GraphAgentNode())
+    # Phase 2: real parallel fork for the three vertical analysis agents.
+    parallel_node = parallel_gather(
+        FinancialAgentNode(),
+        AnnouncementAgentNode(),
+        GraphAgentNode(),
+    )
     g.add_node(parallel_node, name="parallel_vertical")
     g.set_entry("planner")
 
-    # Conditional routing from planner based on the leading hypothesis
-    def route(state: ScanState) -> str:
-        if not state.risk_hypothesis:
-            return "vertical"
-        leading = state.risk_hypothesis[0]
-        if leading in ("公司治理", "关联交易"):
-            return "vertical"
-        return "vertical"
-
-    g.add_conditional_edges("planner", route, {
-        "vertical": "parallel_vertical",
-    })
-
+    # Planner → parallel vertical (all hypothesis branches converge)
+    g.add_edge("planner", "parallel_vertical")
     g.add_edge("parallel_vertical", "replan")
 
-    # Replan branches: loop back to the parallel fork if missing, otherwise continue
+    # Replan branches: loop back to the parallel fork once, or continue
     def replan_route(state: ScanState) -> str:
-        for needed in state.analysis_plan:
-            if needed not in state.completed_steps and needed in {"graph_agent"}:
-                return "more_graph"
+        if state.replan_count <= 1 and state.needs_more_analysis():
+            return "more_vertical"
         return "to_predict"
 
     g.add_conditional_edges("replan", replan_route, {
-        "more_graph": "parallel_vertical",
+        "more_vertical": "parallel_vertical",
         "to_predict": "predictor",
     })
 

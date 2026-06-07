@@ -24,6 +24,15 @@ export interface RankingResponse {
   total: number;
 }
 
+// ── Evidence (Phase 2 强契约) ──
+export interface Evidence {
+  source_type: 'announcement' | 'financial' | 'case' | 'graph' | 'regulatory_filing';
+  source_id: string;
+  source?: string;
+  snippet: string;
+  line_range?: [number, number];
+}
+
 // ── Scan ──
 export interface ScanResult {
   company: Company;
@@ -55,6 +64,7 @@ export interface RiskFactor {
   evidence_quote: string;
   evidence_source: string;
   confidence: number;
+  evidence?: Evidence[];
 }
 
 export interface SimilarCase {
@@ -156,6 +166,87 @@ export interface FeatureImportance {
   importance: number;
 }
 
+// ── Competition metrics (Phase 3) ──
+export interface CompetitionMetricsReport {
+  model_path: string;
+  n_features: number;
+  train_cutoff: string;
+  train_size: number;
+  test_size: number;
+  elapsed_sec: number;
+  optimal_threshold: number;
+  metrics: {
+    auc_roc: number;
+    f1: number;
+    f1_optimal_threshold: number;
+    optimal_threshold: number;
+    top_10pct_recall: number;
+  };
+}
+
+export interface BacktestReport {
+  ok: boolean;
+  error?: string;
+  window_days: number;
+  n_samples: number;
+  n_failed: number;
+  n_positive: number;
+  metrics: {
+    auc_roc: number;
+    f1: number;
+    f1_optimal_threshold: number;
+    optimal_threshold: number;
+    top_10pct_recall: number;
+  };
+  thresholds: {
+    auc_target: number;
+    f1_target: number;
+    top_k_recall_target: number;
+    top_k_frac: number;
+  };
+  pass_status: {
+    auc: boolean;
+    f1: boolean;
+    top_k_recall: boolean;
+  };
+}
+
+export interface EvidenceRecallResult {
+  recall: number;
+  matched: number;
+  total_gold: number;
+  threshold: number;
+  detail: Array<{
+    gold_quote: string;
+    best_match_idx: number;
+    best_jaccard: number;
+    hit: boolean;
+  }>;
+}
+
+export interface FocusClassificationResult {
+  accuracy: number;
+  matched: number;
+  total_gold: number;
+  detail: Array<{ gold_pair: [string, string]; hit: boolean }>;
+}
+
+export interface CaseTopKResult {
+  top_k: number;
+  hit: number;
+  predicted: string[];
+  gold: string[];
+}
+
+export interface RegulationFocusVocab {
+  categories: string[];
+  vocab: Array<{
+    category: string;
+    subcategory: string;
+    description: string;
+  }>;
+}
+
 // ── History ──
 export interface ScanRecord {
   scan_id: string;
@@ -192,6 +283,15 @@ export interface SkillFile {
   size: number;
   updated_at: string;
   content?: string;
+}
+
+export interface SkillFileUploadResponse {
+  id: number;
+  filename: string;
+  skill_name: string | null;
+  registered_as_skill: boolean;
+  register_error: string | null;
+  message: string;
 }
 
 // ── Eval ──
@@ -232,4 +332,53 @@ export interface JudgeResult {
   weighted_total: number;
   issues: string[];
   suggestions: string[];
+}
+
+// ── Auth (Phase 5) ──
+export interface AuthUser {
+  user_id: number;
+  role: string;
+  username?: string;
+}
+
+export interface AuthTokenResponse {
+  access_token: string;
+  token_type: string;
+  user_id: number;
+  role: string;
+}
+
+export interface WsTicket {
+  ticket: string;
+  scan_id: string;
+  ttl_sec: number;
+}
+
+// ── Async task (Phase 4) ──
+export type AsyncTaskStatus = 'pending' | 'running' | 'completed' | 'failed';
+
+export interface AsyncTaskRow {
+  task_id: string;
+  kind: string;
+  status: AsyncTaskStatus;
+  input: Record<string, any>;
+  output: Record<string, any>;
+  error_message: string | null;
+  created_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+// ── WebSocket trace messages ──
+export interface WsTraceEvent {
+  type: 'trace' | 'scan_complete';
+  scan_id: string;
+  node_name?: string;
+  action?: string;
+  output_summary?: string;
+  duration_ms?: number;
+  tokens_used?: number;
+  ts?: string;
+  risk_level?: string;
+  probability?: number;
 }

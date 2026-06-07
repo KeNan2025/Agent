@@ -76,6 +76,16 @@ async def review_pending_events(loader: DataLoader | None = None) -> dict[str, i
             result = await session.execute(stmt)
             pending = result.scalars().all()
 
+            # Phase 5b: lazy-create a MemoryServiceClient once per pass.
+            memory_client = None
+            try:
+                from app.services.memory import MemoryServiceClient, build_session
+                from app.settings import settings as _settings
+                if _settings.features.enable_memo_flux:
+                    memory_client = MemoryServiceClient()
+            except Exception:  # noqa: BLE001
+                memory_client = None
+
             for ev in pending:
                 if not ev.scan_date or not ev.company_code:
                     counts["skipped"] += 1
@@ -89,6 +99,23 @@ async def review_pending_events(loader: DataLoader | None = None) -> dict[str, i
                 ev.reviewed_at = datetime.now(timezone.utc)
                 counts["reviewed"] += 1
                 counts["hit" if hit else "miss"] += 1
+
+                # Phase 5b: write the verified outcome back to long-term memory
+                if memory_client is not None:
+                    try:
+                        from app.services.memory import build_session  # noqa: F811
+                        session_key = build_session(user_id=0, company_code=ev.company_code)
+                        content = (
+                            f"[CASE_PATTERN reviewed] scan_date={ev.scan_date} "
+                            f"window={ev.window_days}d "
+                            f"predicted={ev.predicted_probability:.2f} "
+                            f"actual={'问询命中' if hit else '未命中'} "
+                            f"inquiry_id={gid or '-'}"
+                        )
+                        await memory_client.write_memory(session_key, content)
+                    except Exception:  # noqa: BLE001
+                        pass
+
             await session.commit()
     except Exception as exc:  # noqa: BLE001
         log.warning("experience.review_failed", error=str(exc))

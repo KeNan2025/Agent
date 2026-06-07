@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.llm import get_llm_client
+from app.core.llm import complete_sync, get_llm_client
 from app.core.skill import skill
 
 
@@ -131,7 +131,7 @@ def shap_explain(
         f"识别到的风险：{rf_summary}\n"
         f"请聚焦因果关系，不要重复数值。"
     )
-    resp = client.complete(prompt)
+    resp = complete_sync(client, prompt)
     return {
         "attribution_text": resp.text,
         "tokens_used": resp.tokens_used,

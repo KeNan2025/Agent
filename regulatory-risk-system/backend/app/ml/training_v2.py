@@ -32,7 +32,10 @@ def build_dataset_from_competition() -> tuple[np.ndarray, np.ndarray, list[str],
     feature engineering module.
     """
     from app.features.engineer import FEATURE_NAMES, FeatureEngineer
-    from app.mock_data.generator import generate_financial, generate_risk_factors
+    from app.mock_data.generator import (
+        generate_financial_features, generate_risk_factors,
+    )
+    from app.models.schemas import CompanyInfo
 
     reg = get_data_registry()
     rows = reg.all_ground_truth()
@@ -44,21 +47,25 @@ def build_dataset_from_competition() -> tuple[np.ndarray, np.ndarray, list[str],
     y: list[int] = []
     scan_dates: list[str] = []
     for row in rows:
-        # Synthesize financial features from the company code (deterministic)
-        fin = generate_financial(row.company_code)
-        fin_dict = fin.model_dump() if hasattr(fin, "model_dump") else fin
-        risk_factors = generate_risk_factors(row.company_code, fin_dict, top_k=5)
-        risk_dicts = [r.model_dump() if hasattr(r, "model_dump") else r for r in risk_factors]
-        # Graph metrics: use the local in-memory KG (lightweight)
         try:
-            from app.graph import get_graph
-            g_metrics = get_graph().metrics_for(row.company_code).to_feature_dict()
-        except Exception:
-            g_metrics = {}
-        vec = eng.build_vector(None, fin, risk_dicts, history=None, graph_metrics=g_metrics)
-        X_rows.append(np.asarray(vec, dtype=float))
-        y.append(int(row.label))
-        scan_dates.append(row.scan_date)
+            company = CompanyInfo(
+                code=row.company_code, name=row.company_code,
+                industry="", market_cap=0.0,
+            )
+            fin = generate_financial_features(company)
+            risk_factors = generate_risk_factors(company, fin)
+            risk_dicts = [rf.model_dump() for rf in risk_factors]
+            try:
+                from app.graph import get_graph
+                g_metrics = get_graph().metrics_for(row.company_code).to_feature_dict()
+            except Exception:
+                g_metrics = {}
+            vec = eng.build_vector(company, fin, risk_dicts, history=None, graph_metrics=g_metrics)
+            X_rows.append(np.asarray(vec, dtype=float))
+            y.append(int(row.label))
+            scan_dates.append(row.scan_date)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("training_v2.row_failed", error=str(exc), code=row.company_code)
 
     X = np.vstack(X_rows) if X_rows else np.zeros((0, len(FEATURE_NAMES)))
     return X, np.asarray(y, dtype=int), list(FEATURE_NAMES), scan_dates

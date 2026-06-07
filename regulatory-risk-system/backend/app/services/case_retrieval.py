@@ -41,7 +41,7 @@ def _tokenize(s: str) -> list[str]:
 def _char_hash_dense(text: str, dim: int = 256) -> list[float]:
     vec = [0.0] * dim
     for ch in text:
-        idx = (ord(ch) * 2654435761) & 0xFFFFFFFF % dim
+        idx = ((ord(ch) * 2654435761) & 0xFFFFFFFF) % dim
         vec[idx] += 1.0
     norm = sum(x * x for x in vec) ** 0.5 or 1.0
     return [x / norm for x in vec]

@@ -32,7 +32,7 @@ log = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """App lifecycle: init db, run zombie cleanup, lazy-warm predictor,
-    start scheduler (Phase 4)."""
+    start scheduler (Phase 4), reload user skills (Phase 5)."""
     configure_logging()
     log.info("startup.begin", version=settings.app_version)
 
@@ -49,6 +49,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         get_or_train()
     except Exception as exc:  # don't crash startup if optional deps missing
         log.warning("startup.predictor_warmup_skipped", error=str(exc))
+
+    # Phase 5: re-register user-uploaded skills under sandbox
+    try:
+        from app.core.skill_loader import reload_user_skills
+        n = reload_user_skills()
+        if n:
+            log.info("startup.user_skills_loaded", count=n)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("startup.user_skills_skipped", error=str(exc))
 
     # Start scheduler (experience review / zombie cleanup / weekly retrain log)
     if settings.features.enable_websocket:

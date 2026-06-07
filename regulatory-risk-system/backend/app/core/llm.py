@@ -123,7 +123,7 @@ class MockLLMClient(LLMClient):
         )
         seed = int(hashlib.md5(joined.encode("utf-8")).hexdigest()[:8], 16)
         text = self._template(joined, seed)
-        return LLMResponse(
+        resp = LLMResponse(
             text=text,
             tokens_used=min(max_tokens, max(100, len(text) // 2)),
             prompt_tokens=max(50, len(joined) // 3),
@@ -131,6 +131,13 @@ class MockLLMClient(LLMClient):
             model="mock-llm",
             latency_ms=50,
         )
+        await _log_usage(
+            model=resp.model, mode=self.name,
+            prompt_tokens=resp.prompt_tokens,
+            completion_tokens=resp.completion_tokens,
+            latency_ms=resp.latency_ms, call_kind="chat",
+        )
+        return resp
 
     async def chat_with_tools(
         self,
@@ -154,7 +161,7 @@ class MockLLMClient(LLMClient):
             fn = (tool.get("function") or {}).get("name") or tool.get("name")
             if fn and fn.lower().split(".")[-1] in last_text:
                 args = self._default_args_for(tool)
-                return LLMResponse(
+                resp = LLMResponse(
                     text="",
                     tool_calls=[ToolCall(id="mock-tc-1", name=fn, arguments=args)],
                     tokens_used=200,
@@ -164,6 +171,13 @@ class MockLLMClient(LLMClient):
                     latency_ms=80,
                     finish_reason="tool_calls",
                 )
+                await _log_usage(
+                    model=resp.model, mode=self.name,
+                    prompt_tokens=resp.prompt_tokens,
+                    completion_tokens=resp.completion_tokens,
+                    latency_ms=resp.latency_ms, call_kind="tool",
+                )
+                return resp
         return await self.chat(messages, temperature=temperature, max_tokens=max_tokens)
 
     def _default_args_for(self, tool: dict[str, Any]) -> dict[str, Any]:
@@ -306,10 +320,20 @@ class OpenAICompatibleClient(LLMClient):
             "Content-Type": "application/json",
         }
         start = time.time()
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                resp = await client.post(url, json=payload, headers=headers)
+                resp.raise_for_status()
+                data = resp.json()
+        except Exception as exc:  # noqa: BLE001
+            latency_ms = int((time.time() - start) * 1000)
+            await _log_usage(
+                model=self.model, mode="real",
+                prompt_tokens=0, completion_tokens=0, latency_ms=latency_ms,
+                call_kind="tool" if tools else "chat",
+                success=False, error_message=str(exc)[:500],
+            )
+            raise
         latency_ms = int((time.time() - start) * 1000)
         choice = data["choices"][0]
         msg = choice["message"]
@@ -322,7 +346,7 @@ class OpenAICompatibleClient(LLMClient):
                 args = {}
             tool_calls.append(ToolCall(id=tc.get("id", ""), name=tc["function"]["name"], arguments=args))
         usage = data.get("usage", {}) or {}
-        return LLMResponse(
+        result = LLMResponse(
             text=text,
             tool_calls=tool_calls,
             tokens_used=usage.get("total_tokens", 0),
@@ -333,6 +357,15 @@ class OpenAICompatibleClient(LLMClient):
             raw=data,
             finish_reason=choice.get("finish_reason", ""),
         )
+        await _log_usage(
+            model=self.model, mode="real",
+            prompt_tokens=result.prompt_tokens,
+            completion_tokens=result.completion_tokens,
+            latency_ms=latency_ms,
+            call_kind="tool" if tools else "chat",
+            success=True,
+        )
+        return result
 
 
 # ─────────────────────────── Usage Log ───────────────────────────
@@ -378,6 +411,50 @@ async def _log_usage(
             await session.commit()
     except Exception as exc:  # noqa: BLE001
         log.warning("llm.log_persist_failed", error=str(exc))
+
+
+# ─────────────────────────── Sync wrappers ───────────────────────────
+
+
+def complete_sync(client: LLMClient, prompt: str, **kwargs: Any) -> LLMResponse:
+    """Synchronous wrapper around `client.complete(prompt)`.
+
+    Skills run inside `Skill.func` which is itself called via a sync
+    interface (see `SkillRegistry.call`). Skills that need an LLM call
+    therefore need a sync facade. This helper handles both cases:
+    - no running loop: `asyncio.run`
+    - inside a running loop: spawn a thread with its own loop (the
+      caller is presumably already in an executor thread, see
+      `BaseAgent._dispatch_tool` which uses `run_in_executor`).
+    """
+    coro_factory = lambda: client.complete(prompt, **kwargs)
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is None or not loop.is_running():
+        return asyncio.run(coro_factory())
+    # We are inside an already-running loop (rare for Skills, since
+    # BaseAgent uses run_in_executor). Spin a temporary loop in a thread.
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro_factory()).result()
+
+
+def chat_sync(
+    client: LLMClient, messages: list[dict[str, Any]], **kwargs: Any
+) -> LLMResponse:
+    """Synchronous wrapper around `client.chat(messages)`."""
+    coro_factory = lambda: client.chat(messages, **kwargs)
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is None or not loop.is_running():
+        return asyncio.run(coro_factory())
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro_factory()).result()
 
 
 # ─────────────────────────── Structured Output Helper ───────────────────────────
@@ -434,19 +511,30 @@ _CLIENT: LLMClient | None = None
 
 
 def get_llm_client() -> LLMClient:
-    """Return the global LLM client (singleton)."""
+    """Return the global LLM client (singleton).
+
+    Honours the following precedence for the base URL:
+    1. settings.llm.base_url (explicit override)
+    2. settings.llm.litellm_base_url (LiteLLM gateway, default for prod)
+    3. LLM_BASE_URL env (legacy)
+    """
     global _CLIENT
     if _CLIENT is not None:
         return _CLIENT
     mode = settings.llm.mode.lower()
     if mode == "real":
         api_key = settings.llm.api_key or os.getenv("LLM_API_KEY", "")
-        base_url = settings.llm.base_url or os.getenv("LLM_BASE_URL", "")
+        base_url = (
+            settings.llm.base_url
+            or settings.llm.litellm_base_url
+            or os.getenv("LLM_BASE_URL", "")
+        )
         model = os.getenv("LLM_MODEL", settings.llm.default_model)
         if not api_key or not base_url:
             log.warning("llm.real_mode_fallback_to_mock", reason="missing API key or base url")
             _CLIENT = MockLLMClient()
         else:
+            log.info("llm.real_client_initialized", base_url=base_url, model=model)
             _CLIENT = OpenAICompatibleClient(api_key=api_key, base_url=base_url, model=model)
     else:
         _CLIENT = MockLLMClient()
@@ -474,4 +562,5 @@ __all__ = [
     "LLMResponse", "ToolCall",
     "get_llm_client", "reset_llm_client",
     "complete_with_schema",
+    "complete_sync", "chat_sync",
 ]

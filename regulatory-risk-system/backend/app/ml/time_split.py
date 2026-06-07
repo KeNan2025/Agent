@@ -30,9 +30,11 @@ def make_time_split(
     """Return indices for samples whose scan_date <= train_cutoff (train) and
     those whose scan_date > train_cutoff (test).
     """
+    # Materialize once so we don't exhaust the iterator
+    dates: list[date | datetime | str | None] = list(scan_dates)
     train: list[int] = []
     test: list[int] = []
-    for i, raw in enumerate(scan_dates):
+    for i, raw in enumerate(dates):
         d = _coerce_date(raw)
         if d is None:
             # Unknown date — push to train (more conservative)
@@ -44,10 +46,12 @@ def make_time_split(
             test.append(i)
     # If either side is too small, fall back to a stratified split
     if len(train) < min_train or len(test) < min_test:
-        idx = list(range(len(list(scan_dates)) if hasattr(scan_dates, "__len__") else sum(1 for _ in scan_dates)))
-        cut = int(len(idx) * 0.8)
-        return TimeSplit(train_indices=idx[:cut], test_indices=idx[cut:],
-                         train_cutoff=train_cutoff, test_starts_at=train_cutoff)
+        idx = list(range(len(dates)))
+        cut = max(1, int(len(idx) * 0.8))
+        return TimeSplit(
+            train_indices=idx[:cut], test_indices=idx[cut:],
+            train_cutoff=train_cutoff, test_starts_at=train_cutoff,
+        )
     return TimeSplit(
         train_indices=train, test_indices=test,
         train_cutoff=train_cutoff, test_starts_at=train_cutoff,

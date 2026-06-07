@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import {
-  Card, Input, Button, Table, Tag, Select, Space, Alert, Row, Col, message,
+  Card, Input, Button, Table, Tag, Select, Space, Alert, Row, Col, message, Switch,
 } from 'antd';
 import {
   ThunderboltOutlined, UploadOutlined, SearchOutlined,
-  WarningOutlined, SafetyOutlined, RightOutlined,
+  WarningOutlined, SafetyOutlined, RightOutlined, ProjectOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { scanBatch } from '../api/client';
+import { scanBatch, scanSingleAsync } from '../api/client';
 import type { BatchScanResponse } from '../types';
 import StatCard from '../components/StatCard';
 import RiskBadge from '../components/RiskBadge';
@@ -18,8 +18,10 @@ export default function BatchScan() {
   const navigate = useNavigate();
   const [codes, setCodes] = useState('');
   const [windowDays, setWindowDays] = useState(60);
+  const [asyncMode, setAsyncMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<BatchScanResponse | null>(null);
+  const [queuedTasks, setQueuedTasks] = useState<Array<{ company_code: string; task_id: string }>>([]);
 
   const handleScan = async () => {
     const codeList = codes.split(/[,\s\n]+/).map((c) => c.trim()).filter(Boolean);
@@ -28,9 +30,23 @@ export default function BatchScan() {
       return;
     }
     setLoading(true);
+    setResults(null);
+    setQueuedTasks([]);
     try {
-      const data = await scanBatch(codeList, windowDays);
-      setResults(data);
+      if (asyncMode) {
+        // Phase 4: enqueue each scan; show task_ids
+        const queued = await Promise.all(
+          codeList.map(async (c) => {
+            const { task_id } = await scanSingleAsync(c, windowDays);
+            return { company_code: c, task_id };
+          }),
+        );
+        setQueuedTasks(queued);
+        message.success(`已入队 ${queued.length} 个扫描任务`);
+      } else {
+        const data = await scanBatch(codeList, windowDays);
+        setResults(data);
+      }
     } catch {
       message.error('扫雷失败');
     }
@@ -111,6 +127,15 @@ export default function BatchScan() {
                   ]}
                 />
               </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 12px', borderRadius: 8,
+                background: 'var(--muted-bg)',
+                border: '1px solid var(--border-dim)',
+              }}>
+                <span style={{ fontSize: 13, color: 'var(--text-normal)' }}>异步入队模式</span>
+                <Switch checked={asyncMode} onChange={setAsyncMode} size="small" />
+              </div>
               <Button
                 type="primary"
                 icon={<ThunderboltOutlined />}
@@ -133,6 +158,50 @@ export default function BatchScan() {
           </Col>
         </Row>
       </Card>
+
+      {queuedTasks.length > 0 && (
+        <Card
+          title={
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ProjectOutlined style={{ color: 'var(--primary)' }} />
+              <span style={{ fontWeight: 600 }}>已入队任务</span>
+              <Tag color="blue">{queuedTasks.length}</Tag>
+            </span>
+          }
+          style={{ marginBottom: 20 }}
+        >
+          <Table
+            dataSource={queuedTasks}
+            rowKey="task_id"
+            size="middle"
+            pagination={false}
+            columns={[
+              {
+                title: '公司代码', dataIndex: 'company_code', width: 120,
+                render: (v: string) => <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{v}</span>,
+              },
+              {
+                title: 'Task ID', dataIndex: 'task_id',
+                render: (v: string) => (
+                  <span className="text-mono" style={{ fontSize: 12, color: 'var(--text-dim)' }}>{v}</span>
+                ),
+              },
+              {
+                title: '操作', key: 'action', width: 140,
+                render: (_: any, r: any) => (
+                  <Button
+                    type="link"
+                    icon={<ProjectOutlined />}
+                    onClick={() => navigate(`/tasks?task_id=${r.task_id}`)}
+                  >
+                    查看进度
+                  </Button>
+                ),
+              },
+            ]}
+          />
+        </Card>
+      )}
 
       {results && (
         <div className="fade-in-up">

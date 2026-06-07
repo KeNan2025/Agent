@@ -4,17 +4,16 @@ Data layer: registry + plugin loader.
 Adapted from BestAITrader's `data.api_registry` + `common_data_{source}`
 JSONB pattern. We do NOT use Tushare (per project decision); instead
 `LocalDataSource` reads from `data/competition/`.
-
-This module is a thin shell: it is the entry point for new data sources
-added in future phases (e.g. Wind, public web scrapers).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
-from app.data import DataLoader, InquiryLetter, Announcement, FinancialRow, GroundTruthRow
 from app.core.logging import get_logger
+from app.data import (
+    Announcement, DataLoader, FinancialRow, GroundTruthRow, InquiryLetter,
+)
 
 log = get_logger(__name__)
 
@@ -23,14 +22,11 @@ log = get_logger(__name__)
 class SourceSpec:
     """Describes a single data source for the registry."""
     source_name: str
-    storage_mode: str = "jsonb"          # always jsonb here
+    storage_mode: str = "jsonb"
     target_table: str = "common_data_local"
     dedup_keys: list[str] = field(default_factory=list)
-    update_strategy: str = "replace"     # replace / append / upsert
+    update_strategy: str = "replace"
     description: str = ""
-
-
-from dataclasses import field
 
 
 class DataRegistry:
@@ -49,7 +45,8 @@ class DataRegistry:
 
     def register(self, spec: SourceSpec) -> None:
         if spec.source_name in self._sources:
-            raise ValueError(f"source {spec.source_name} already registered")
+            log.debug("data.source_already_registered", source=spec.source_name)
+            return
         self._sources[spec.source_name] = spec
         log.info("data.source_registered", source=spec.source_name)
 
@@ -59,7 +56,7 @@ class DataRegistry:
     def list_sources(self) -> list[SourceSpec]:
         return list(self._sources.values())
 
-    # ────────── Public accessors (proxy to the LocalDataLoader) ──────────
+    # ────────── Proxy to LocalDataLoader ──────────
 
     def load_inquiry_letters(self, code: str) -> list[InquiryLetter]:
         return self._local.load_inquiry_letters(code)
@@ -76,7 +73,9 @@ class DataRegistry:
     def all_ground_truth(self) -> list[GroundTruthRow]:
         return self._local.all_ground_truth()
 
-    def get_risk_factors_for_company(self, code: str, scan_date: str | None = None, window_days: int = 60) -> list[dict[str, Any]]:
+    def get_risk_factors_for_company(
+        self, code: str, scan_date: str | None = None, window_days: int = 60,
+    ) -> list[dict[str, Any]]:
         return self._local.get_risk_factors_for_company(code, scan_date, window_days)
 
     def has_competition_data(self) -> bool:

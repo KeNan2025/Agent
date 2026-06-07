@@ -86,10 +86,22 @@ async def upload_file(
         skill_name=skill_name,
         description=description,
     )
+    # Phase 5: hook into the SkillLoader to make this upload immediately
+    # executable via the MCP registry under sandbox enforcement.
+    registered = False
+    register_error: str | None = None
+    if skill_name:
+        try:
+            from app.core.skill_loader import try_register
+            registered = try_register(row)
+        except Exception as exc:  # noqa: BLE001
+            register_error = str(exc)
     return {
         "id": row.id,
         "filename": row.filename,
         "skill_name": row.skill_name,
+        "registered_as_skill": registered,
+        "register_error": register_error,
         "message": "文件上传成功",
     }
 

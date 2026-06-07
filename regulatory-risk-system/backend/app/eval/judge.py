@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.llm import get_llm_client
+from app.core.llm import complete_sync, get_llm_client
 
 
 JUDGE_PROMPT = """
@@ -27,7 +27,7 @@ JUDGE_PROMPT = """
 def judge_report(report_markdown: str) -> dict[str, Any]:
     client = get_llm_client()
     prompt = JUDGE_PROMPT.format(report_content=report_markdown)
-    resp = client.complete(prompt, max_tokens=512)
+    resp = complete_sync(client, prompt, max_tokens=512)
     try:
         parsed = resp.parse_json()
     except Exception:

@@ -96,14 +96,15 @@ def start_scheduler() -> None:
     if not sched.running:
         register_default_jobs()
         sched.start()
-        # Persist registry mirror (best-effort, fire-and-forget)
+        # Persist registry mirror — only schedule if a running loop exists
+        # in the current context (Python 3.10+).
         try:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             loop.create_task(_persist_job("experience_review", "Experience Review (hourly)", "interval", {"hours": 1}))
             loop.create_task(_persist_job("zombie_cleanup", "Zombie scan cleanup", "interval", {"minutes": 30}))
             loop.create_task(_persist_job("weekly_retrain_log", "Weekly retrain reminder", "cron", {"day_of_week": "sun", "hour": 3}))
-        except Exception:
-            pass
+        except RuntimeError:
+            log.debug("scheduler.persist_skipped", reason="no running loop")
         log.info("scheduler.started", job_count=len(sched.get_jobs()))
 
 

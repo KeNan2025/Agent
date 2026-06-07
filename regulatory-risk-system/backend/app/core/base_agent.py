@@ -94,13 +94,16 @@ class BaseAgent(AgentNode):
                 )
 
             self._record_tokens(resp.tokens_used)
+            # Always preserve any free-text the LLM emitted, even when
+            # tool_calls coexist with content.
+            if resp.text:
+                last_text = resp.text
 
             if not resp.tool_calls:
-                last_text = resp.text
                 break
 
             # Append assistant turn with tool_calls and dispatch each
-            messages.append(self._assistant_tool_message(resp.tool_calls))
+            messages.append(self._assistant_tool_message(resp.tool_calls, resp.text))
             for tc in resp.tool_calls:
                 result = await self._dispatch_tool(registry, tc)
                 messages.append(self._tool_result_message(tc, result))
@@ -162,10 +165,12 @@ class BaseAgent(AgentNode):
         # Truncate; in real production this would call LLM for a summary.
         return text[: TOOL_OUTPUT_SUMMARY_THRESHOLD * 3] + "\n... [TRUNCATED]"
 
-    def _assistant_tool_message(self, tool_calls: Sequence[ToolCall]) -> dict[str, Any]:
+    def _assistant_tool_message(
+        self, tool_calls: Sequence[ToolCall], text: str = "",
+    ) -> dict[str, Any]:
         return {
             "role": "assistant",
-            "content": None,
+            "content": text or None,
             "tool_calls": [
                 {
                     "id": tc.id,
