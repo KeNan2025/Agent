@@ -18,7 +18,9 @@ from app.settings import settings
 
 log = get_logger(__name__)
 
-_hasher = PasswordHasher(rounds=settings.security.bcrypt_rounds)
+# argon2 uses (time_cost, memory_cost, parallelism) — there is no "rounds".
+# Use library defaults; they are already calibrated for interactive use.
+_hasher = PasswordHasher()
 _bearer = HTTPBearer(auto_error=False)
 
 

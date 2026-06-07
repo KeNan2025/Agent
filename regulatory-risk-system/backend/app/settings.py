@@ -52,6 +52,12 @@ class SecurityConfig(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_access_ttl_min: int = 60 * 24
     ws_ticket_ttl_sec: int = 30
+    # argon2 tunables (used by app.auth._hasher if you ever swap to a
+    # non-default profile). Defaults match argon2-cffi's interactive preset.
+    argon2_time_cost: int = 3
+    argon2_memory_cost: int = 65536
+    argon2_parallelism: int = 4
+    # Deprecated alias kept to avoid breaking older `.env` files; not used.
     bcrypt_rounds: int = 12
 
 
