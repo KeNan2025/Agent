@@ -42,10 +42,13 @@ def configure_logging() -> None:
 
     timestamper = structlog.processors.TimeStamper(fmt="iso", utc=True)
 
+    # NOTE: `add_logger_name` requires the underlying logger to be a
+    # stdlib `logging.Logger` (it reads `.name`). We use
+    # `PrintLoggerFactory` for zero-dependency printing, whose
+    # `PrintLogger` does NOT expose `.name`. So we skip that processor.
     shared_processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
-        structlog.stdlib.add_logger_name,
         _add_request_id,
         timestamper,
         structlog.processors.StackInfoRenderer(),
@@ -69,10 +72,17 @@ def configure_logging() -> None:
         wrapper_class=structlog.make_filtering_bound_logger(level),
         context_class=dict,
         logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),
-        cache_logger_on_first_use=True,
+        # IMPORTANT: do NOT cache. Module-level `log = get_logger(__name__)`
+        # calls fire BEFORE configure_logging() runs from lifespan; caching
+        # would freeze them onto the *default* (stdlib-flavoured) processor
+        # chain, which includes `add_logger_name` and crashes on the
+        # PrintLogger backend used here.
+        cache_logger_on_first_use=False,
     )
 
-    # Configure stdlib logging to also use structlog
+    # Configure stdlib logging to also use a simple stream handler so
+    # 3rd-party libs (uvicorn, sqlalchemy, etc.) keep printing without
+    # interfering with structlog.
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(logging.Formatter("%(message)s"))
     root = logging.getLogger()
@@ -84,3 +94,10 @@ def configure_logging() -> None:
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
     """Return a structlog logger bound to the given name."""
     return structlog.get_logger(name)
+
+
+# Configure once at import time so any module-level `log = get_logger(...)`
+# (called BEFORE lifespan runs) is already bound to the correct processor
+# chain. `configure_logging()` may be invoked again from lifespan to pick
+# up env-driven overrides.
+configure_logging()
