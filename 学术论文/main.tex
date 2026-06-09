@@ -1,0 +1,79 @@
+% !TEX program = xelatex
+\documentclass{chinese-erj}
+
+% ── 额外宏包 ──
+\usepackage{booktabs}
+\usepackage{threeparttable}
+\usepackage{tabularx}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{subfigure}
+\usepackage{appendix}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{bm}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{makecell}
+\usepackage{pifont}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{color}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\setlist{nosep, left=2em}
+
+
+% ── 论文信息 ──
+\title{信息披露质量、多源特征融合与监管问询概率预测\thanks{本文基于"东吴证券杯"第五届中国研究生金融科技创新大赛数据集完成。感谢东吴证券股份有限公司提供的数据与业务场景支持。文责自负。}}
+
+\author{作者姓名}
+\date{}
+
+\header{信息披露质量、多源特征融合与监管问询概率预测}
+
+% 英文信息
+\entitle{Information Disclosure Quality, Multi-source Feature Fusion, and Regulatory Inquiry Probability Prediction}
+\enauthor{Author Name}
+\eninstitute{School of Economics, University Name}
+\enabstract{
+This paper constructs a listed company regulatory inquiry probability prediction model by integrating multi-source heterogeneous information, including financial indicators, LLM-extracted textual semantic features, market microstructure characteristics, and corporate governance variables. Based on a dataset of approximately 100,000 firm-quarter observations from Chinese A-share listed companies, we systematically examine the incremental predictive power of "soft information" (textual features) relative to traditional "hard information" (financial indicators). Our logistic regression analysis reveals that traditional financial anomaly indicators possess significant predictive power, while large language model-extracted textual semantic features provide substantial incremental predictive value, increasing the AUC from 0.71 to 0.77 -- a statistically significant improvement confirmed by the DeLong test (p<0.01). The economic significance of this increment is most pronounced among firms with severe asymmetric information, including small-cap firms and those with limited analyst coverage. Further using LightGBM heterogeneous stacking ensemble, the full model achieves an AUC of 0.79 and a Top-10\% coverage of 38.6\%. Combining SHAP-based interpretable attribution analysis with large language model-generated explanatory reports, we achieve a three-level traceable attribution chain from probabilistic output to raw evidence, and the explanation quality score reaches 86.3 points measured by LLM-as-Judge. This research provides empirical evidence for understanding the behavioral logic of regulatory inquiries and offers directional references for intelligent financial supervision tools.
+}
+\enkeywords{Regulatory Inquiry; Feature Fusion; Large Language Model; Explainable AI; Information Asymmetry}
+\jel{C53, G14, G18, M41}
+
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+上市公司监管问询是交易所事中事后监管的核心工具，但哪些公司更可能被问询、不同信息维度的预测价值如何、预测结果能否提供可解释的经济学归因，仍缺乏系统性研究。本文融合财务指标、大语言模型（LLM）提取的文本语义特征、市场微观结构特征和公司治理变量等多源异构信息，构建了面向中国A股上市公司的监管问询概率预测模型，系统检验了"软信息"相对于传统"硬信息"的增量预测价值。基于约10万公司-季度观测数据的实证研究发现：第一，传统财务异常指标（Beneish M-Score、应收增速偏离等）对问询概率具有显著的预测能力，基准Logistic回归AUC达到0.71；第二，LLM提取的文本语义风险特征提供了显著的增量信息价值，将AUC进一步提升至0.77，Delong检验表明AUC提升在1\%水平上统计显著；第三，软信息的增量价值在信息不对称更为严重的小市值公司和低分析师覆盖公司中更为凸显；第四，LightGBM异质集成全模型AUC达0.79，Top-10\%高风险公司覆盖率达38.6\%；第五，结合SHAP可解释归因分析与LLM生成式解释报告，实现了从概率输出到原文证据的三级可追溯归因链，LLM-as-Judge评估的逻辑解释有效性得分为86.3分。本文为理解监管问询的行为逻辑提供了经济学证据，也为智能化金融监管工具的开发提供了方向性参考。
+\keywords{监管问询；多源特征融合；大语言模型；可解释人工智能；信息不对称}
+\end{abstract}
+
+
+% ── 引入各章节 ──
+\input{chapters/introduction}
+\input{chapters/institutional}
+\input{chapters/theory}
+\input{chapters/data}
+\input{chapters/methodology}
+\input{chapters/empirical}
+\input{chapters/robustness}
+\input{chapters/interpretation}
+\input{chapters/conclusion}
+
+
+% ── 参考文献 ──
+\addbibresource{erjref.bib}
+\erjref
+\printbibliography[heading=none]
+
+
+% ── 英文标题页 ──
+\enmaketitle
+
+\end{document}

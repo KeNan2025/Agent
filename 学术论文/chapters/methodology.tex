@@ -1,0 +1,67 @@
+% ═══════════════════════════════════════════════════════════════
+% 第五章：研究设计
+% ═══════════════════════════════════════════════════════════════
+
+\section{研究设计}
+
+\subsection{模型设定}
+
+本文采用"从线性基准到非线性上限"的分层建模策略，该策略在Miller（2024）的金融机器学习综述中被称为"金字塔建模法"——先用经济学界最熟悉的Logistic回归建立基准，再逐步过渡到能捕捉非线性交互关系的集成学习方法。
+
+\subsubsection{基准模型：Logistic回归}
+
+基准模型设定为Logistic回归形式：
+
+\begin{equation}
+\begin{aligned}
+P(\text{Inquiry}_{i,t+60}=1 \mid X_{i,t}) = \Lambda\bigg(
+\alpha &+ \beta_1 \text{Financial}_{i,t}^{(A)} + \beta_2 \text{Semantic}_{i,t}^{(B)} \\
+&+ \beta_3 \text{Market}_{i,t}^{(C)} + \beta_4 \text{History}_{i,t}^{(D)} \\
+&+ \beta_5 \text{Graph}_{i,t}^{(E)} + \beta_6 \text{Temporal}_{i,t}^{(F)} \\
+&+ \gamma_t + \delta_j + \varepsilon_{i,t} \bigg)
+\label{eq:logit}
+\end{aligned}
+\end{equation}
+
+其中，$\Lambda(\cdot)$为Logistic累积分布函数。$\text{Financial}_{i,t}^{(A)}$至$\text{Temporal}_{i,t}^{(F)}$分别对应第\ref{sec:data}节中定义的六大类特征向量。$\gamma_t$为时间固定效应，控制宏观经济环境和监管政策变化对所有公司的共同影响。$\delta_j$为行业固定效应，控制不同行业在信息披露要求和监管关注度上的系统性差异。$\varepsilon_{i,t}$为公司层面聚类（cluster）的稳健标准误，允许多年同一公司的扰动项间存在序列相关。
+
+模型的边际效应（Marginal Effects）以连续变量一个标准差变化对问询概率的离散影响呈现，这是经济学论文的标准做法。
+
+\subsubsection{增量预测能力检验}
+
+检验LLM提取的文本语义特征是否具有增量预测能力，是本文的核心实证策略。我们构建如下嵌套模型序列：
+
+\begin{itemize}[left=2em]
+\item \textbf{模型M0}（基准）：仅含公司固定特征（行业、市值对数、上市年限）和时间固定效应
+\item \textbf{模型M1}（硬信息模型）：M0 + 传统财务指标（A组）
+\item \textbf{模型M2}（软信息模型）：M0 + 文本语义特征（B组）
+\item \textbf{模型M3}（融合模型）：M0 + 财务指标 + 文本语义特征（A组 + B组）
+\item \textbf{模型M4}（全模型）：M3 + 市场 + 历史 + 图谱 + 时序特征（C组至F组）
+\end{itemize}
+
+每组嵌套模型的性能提升通过以下三个指标量化：（1）AUC增量（$\Delta$AUC）及其Delong检验统计显著性；（2）McFadden伪R$^2$提升；（3）似然比检验（Likelihood Ratio Test）统计量。
+
+\subsubsection{集成学习模型}
+
+在Logistic基准之外，本文引入异构集成学习框架进行最优预测性能估计。集成框架参考了\texttt{regulatory-risk-system/backend/app/ml/predictor.py}模块\texttt{PredictorEnsemble}类的设计，采用两层Stacking结构：
+
+\begin{itemize}[left=2em]
+\item \textbf{第一层（Base Learners）}：三个异构基模型并列训练——CatBoost（对类别特征友好，适宜处理行业分类、审计意见类型等变量）、LightGBM（高维特征处理效率高，支持类别权重自动调整）和TabPFN-2.5（基于预训练的表格基础模型，在中小规模数据集上零调参即可达到具有竞争力的性能）。
+\item \textbf{第二层（Meta Learner）}：以第一层各模型在五折交叉验证下的Out-of-Fold（OOF）预测概率为输入，训练Logistic回归作为元学习器，输出最终的Stacking融合概率。
+\end{itemize}
+
+选择异质集成而非单一模型的原因在于：CatBoost、LightGBM和TabPFN-2.5分别基于不同的归纳偏好（Boosting、Leaf-wise Tree和Transformer Prior），其互补性有望带来比单一模型更稳定的预测性能。
+
+\subsection{样本不平衡处理}
+
+正样本率仅为2.3\%的极端不平衡是本文面临的严峻挑战。采用以下方法综合应对：（1）加权Logistic回归，将负样本权重设为1，正样本权重设为$n_{\text{neg}}/n_{\text{pos}} \approx 43$，使得模型在训练时赋予正样本更高的注意力权重；（2）阈值优化，在验证集上以最大化F1分数为目标搜索最优分类阈值，而非使用默认的0.5阈值；（3）在集成学习中设置参数\texttt{class\_weight='balanced'}（LightGBM原生支持），自动根据类别比例调整损失函数权重。
+
+\subsection{模型评估指标}
+
+本文同时采用三类评估指标：
+
+预测性能指标方面，沿用赛题技术指标要求，报告AUC-ROC（曲线下面积）、AUC-PR（精确率-召回率曲线下面积，在不平衡数据中较AUC-ROC更具辨别力）、F1分数（精确率和召回率的调和平均）、Top-10\%覆盖率（按预测概率排序的前10\%公司中真实被问询样本的占比），以及校准曲线（Calibration Curve，评估概率预测的校准度）。
+
+经济学显著性指标方面，报告Logistic回归中核心变量的边际效应——一个标准差变化使问询概率变化多少个百分点——以此衡量特征的经济重要性而非仅仅是统计显著性。同时报告SHAP值作为非线性模型的归因补充。
+
+统计检验方面，使用Delong非参数检验（Delong et al., 1988）比较不同模型的AUC差异是否统计显著，使用似然比检验嵌套模型。上述计量方法在\texttt{regulatory-risk-system/backend/app/ml/metrics\_competition.py}模块中实现。
