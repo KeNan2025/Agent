@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(python script/task2_baseline_model.py)",
+      "Bash(python script/task2_timewindow_model.py)"
+    ]
+  }
+}
